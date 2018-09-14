@@ -1,0 +1,99 @@
+/* Application wide styles */
+
+.terminal {
+	-fx-background-color: #002b36;
+}
+.styled-text-area .text {
+    -fx-fill: #839496;
+}
+.styled-text-area .terminal-bold {
+	-fx-font-weight: bold;
+}
+
+.styled-text-area .terminal-foreground-black {
+	-fx-fill: #073642;
+}
+.styled-text-area .terminal-foreground-red {
+	-fx-fill: #dc322f;
+}
+.styled-text-area .terminal-foreground-green {
+	-fx-fill: #859900;
+}
+.styled-text-area .terminal-foreground-yellow {
+	-fx-fill: #b58900;
+}
+.styled-text-area .terminal-foreground-blue {
+	-fx-fill: #268bd2;
+}
+.styled-text-area .terminal-foreground-magenta {
+	-fx-fill: #d33682;
+}
+.styled-text-area .terminal-foreground-cyan {
+	-fx-fill: #2aa198;
+}
+.styled-text-area .terminal-foreground-white {
+	-fx-fill: #839496;
+}
+
+.label {
+	-fx-padding: 6px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+    -fx-effect: dropshadow( gaussian , rgba(255,255,255,0.5) , 0,0,0,1 );
+}
+
+.table-header {
+	-fx-padding: 12px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-background-color: black;
+    -fx-effect: dropshadow( gaussian , rgba(255,255,255,0.5) , 0,0,0,1 );
+}
+
+.titled-vbox {
+    -fx-background-color: white;
+}
+.titled-vbox-content {
+    -fx-background-color: white;
+}
+
+.titled-vbox-header {
+    -fx-background-color:
+        linear-gradient(to bottom,
+            derive(-fx-color,-15%) 95%,
+            derive(-fx-color,-25%) 100%
+        ),
+        -fx-inner-border, -fx-body-color;
+    -fx-background-insets: 0, 1, 2;
+    -fx-background-radius: 3 3 0 0, 2 2 0 0, 1 1 0 0;
+    -fx-padding: 0.3333em 0.75em 0.3333em 0.75em; /* 4 9 4 9 */
+
+}
+
+.highlighted-cell {
+	-fx-padding: 6px;
+    -fx-background-color: #0093ff;
+}
+
+.highlighted-edge {
+    -fx-stroke: #0093ff;
+}
+
+/*
+.button {
+    -fx-text-fill: black;
+    -fx-font-family: "Arial Narrow";
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 5, 0.0 , 0 , 1 );
+} */
+
+.button:hover{
+    -fx-base: #395bae;
+}
+
+.green-bar  { -fx-accent: green;  }
+.yellow-bar { -fx-accent: yellow; }
+.orange-bar { -fx-accent: orange; }
+.red-bar    { -fx-accent: red;    }
