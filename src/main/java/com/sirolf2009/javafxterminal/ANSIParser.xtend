@@ -6,8 +6,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
 import org.eclipse.xtend.lib.annotations.ToString
+import org.eclipse.xtend.lib.annotations.EqualsHashCode
 
-class ANSI {
+class ANSIParser {
 	
 	static val BEL = 7 as char
 	static val ESCAPE = 27 as char
@@ -46,7 +47,7 @@ class ANSI {
 				counter.incrementAndGet()
 			}
 		}
-		return output.toString() -> commands
+		return new ParsedAnsi(output.toString(), commands)
 	}
 	
 	def static parseControlSequence(Reader reader, int index) {
@@ -75,14 +76,14 @@ class ANSI {
 		}
 	}
 	
-	@FinalFieldsConstructor @ToString @Accessors static class AnsiCode {
+	@FinalFieldsConstructor @ToString @Accessors @EqualsHashCode static class AnsiCode {
 		val int index
 		val List<String> params
 	}
-	@FinalFieldsConstructor @ToString @Accessors static class AnsiControlSequence extends AnsiCode {
+	@FinalFieldsConstructor @ToString @Accessors @EqualsHashCode static class AnsiControlSequence extends AnsiCode {
 		val char command
 	}
-	@FinalFieldsConstructor @ToString @Accessors static class AnsiOperatingSystemCommand extends AnsiCode {
+	@FinalFieldsConstructor @ToString @Accessors @EqualsHashCode static class AnsiOperatingSystemCommand extends AnsiCode {
 	}
 	
 	def static hex(byte b) {
