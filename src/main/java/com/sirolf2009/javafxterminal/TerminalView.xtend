@@ -6,6 +6,7 @@ import java.util.List
 import java.util.Set
 import javafx.application.Platform
 import org.fxmisc.richtext.CodeArea
+import org.fxmisc.richtext.NavigationActions.SelectionPolicy
 
 class TerminalView extends CodeArea {
 
@@ -32,39 +33,45 @@ class TerminalView extends CodeArea {
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-				buffer.append(char as char)
-				val character = char as char
-				println("new character " + char + ": " + character)
+				println('''adding char «char»: «char as char»''')
 
-				if(character == SINGLE_CSI) {
-					parseControlSequence(reader)
-				} else if(character == BEL) {
-					println("bell")
-				} else if(character == ESCAPE) {
-					val next = reader.read()
-					if(next == -1) {
-						val stylesCopy = styles.toList()
-						Platform.runLater [
-							insertChar(character, stylesCopy)
-						]
-					} else if(next == MULTI_CSI) {
+				try {
+					buffer.append(char as char)
+					val character = char as char
+
+					if(character == SINGLE_CSI) {
 						parseControlSequence(reader)
-					} else if(next == MULTI_OSC) {
-						parseOperatingSystemCommand(reader)
-					} else if(next == BEL) {
+					} else if(character == BEL) {
 						println("bell")
-					} else {
+					} else if(character == ESCAPE) {
+						val next = reader.read()
+						if(next == -1) {
+							val stylesCopy = styles.toList()
+							Platform.runLater [
+								insertChar(character, stylesCopy)
+							]
+						} else if(next == MULTI_CSI) {
+							parseControlSequence(reader)
+						} else if(next == MULTI_OSC) {
+							parseOperatingSystemCommand(reader)
+						} else if(next == BEL) {
+							println("bell")
+						} else {
+							val stylesCopy = styles.toList()
+							Platform.runLater [
+								insertChar(character, stylesCopy)
+								insertChar(next as char, stylesCopy)
+							]
+						}
+					} else if(char >= 32 || char == NEWLINE as int) {
 						val stylesCopy = styles.toList()
 						Platform.runLater [
 							insertChar(character, stylesCopy)
-							insertChar(next as char, stylesCopy)
 						]
 					}
-				} else if(char >= 32 || char == NEWLINE as int) {
-					val stylesCopy = styles.toList()
-					Platform.runLater [
-						insertChar(character, stylesCopy)
-					]
+				} catch(Exception e) {
+					System.err.println("Failed to add char " + char + ": " + (char as char))
+					e.printStackTrace()
 				}
 			}
 			reader.close()
@@ -92,6 +99,12 @@ class TerminalView extends CodeArea {
 								styles.add("terminal-italic")
 							case 4:
 								styles.add("terminal-underline")
+							case 5: {
+								// TODO slow blink, less than 150 per minute
+							}
+							case 6: {
+								// TODO fast blink, more than 150 per minute
+							}
 							case 7: {
 								val foreground = styles.findFirst[startsWith("terminal-foreground")]
 								val background = styles.findFirst[startsWith("terminal-background")]
@@ -100,7 +113,34 @@ class TerminalView extends CodeArea {
 								styles.add(background.replace("terminal-background", "terminal-foreground"))
 							}
 							case 10: {
-								//TODO primary font
+								// TODO primary font
+							}
+							case 11: {
+								// TODO alternative font
+							}
+							case 12: {
+								// TODO alternative font
+							}
+							case 13: {
+								// TODO alternative font
+							}
+							case 14: {
+								// TODO alternative font
+							}
+							case 15: {
+								// TODO alternative font
+							}
+							case 16: {
+								// TODO alternative font
+							}
+							case 17: {
+								// TODO alternative font
+							}
+							case 18: {
+								// TODO alternative font
+							}
+							case 19: {
+								// TODO alternative font
 							}
 							case 30:
 								styles.setForeground("terminal-foreground-black")
@@ -118,11 +158,49 @@ class TerminalView extends CodeArea {
 								styles.setForeground("terminal-foreground-cyan")
 							case 37:
 								styles.setForeground("terminal-foreground-white")
+							case 38: {
+								if(array.get(0).equals("5")) {
+									switch (Integer.parseInt(array.get(1))) {
+										case 0:
+											styles.setForeground("terminal-foreground-black")
+										case 1:
+											styles.setForeground("terminal-foreground-red")
+										case 2:
+											styles.setForeground("terminal-foreground-green")
+										case 3:
+											styles.setForeground("terminal-foreground-yellow")
+										case 4:
+											styles.setForeground("terminal-foreground-blue")
+										case 5:
+											styles.setForeground("terminal-foreground-magenta")
+										case 6:
+											styles.setForeground("terminal-foreground-cyan")
+										case 7:
+											styles.setForeground("terminal-foreground-white")
+										case 8:
+											styles.setForeground("terminal-foreground-black-bright")
+										case 9:
+											styles.setForeground("terminal-foreground-red-bright")
+										case 11:
+											styles.setForeground("terminal-foreground-green-bright")
+										case 12:
+											styles.setForeground("terminal-foreground-yellow-bright")
+										case 13:
+											styles.setForeground("terminal-foreground-blue-bright")
+										case 14:
+											styles.setForeground("terminal-foreground-magenta-bright")
+										case 15:
+											styles.setForeground("terminal-foreground-cyan-bright")
+										case 16:
+											styles.setForeground("terminal-foreground-white-bright")
+									}
+								}
+							}
 							case 40:
 								styles.setBackground("terminal-background-black")
 							case 41:
 								styles.setBackground("terminal-background-red")
-							case 42: 
+							case 42:
 								styles.setBackground("terminal-background-green")
 							case 43:
 								styles.setBackground("terminal-background-yellow")
@@ -134,29 +212,73 @@ class TerminalView extends CodeArea {
 								styles.setBackground("terminal-background-cyan")
 							case 47:
 								styles.setBackground("terminal-background-white")
+							case 90:
+								styles.setForeground("terminal-foreground-black-bright")
+							case 91:
+								styles.setForeground("terminal-foreground-red-bright")
+							case 92:
+								styles.setForeground("terminal-foreground-green-bright")
+							case 93:
+								styles.setForeground("terminal-foreground-yellow-bright")
+							case 94:
+								styles.setForeground("terminal-foreground-blue-bright")
+							case 95:
+								styles.setForeground("terminal-foreground-magenta-bright")
+							case 96:
+								styles.setForeground("terminal-foreground-cyan-bright")
+							case 97:
+								styles.setForeground("terminal-foreground-white-bright")
+							case 100:
+								styles.setForeground("terminal-background-black-bright")
+							case 101:
+								styles.setForeground("terminal-background-red-bright")
+							case 102:
+								styles.setForeground("terminal-background-green-bright")
+							case 103:
+								styles.setForeground("terminal-background-yellow-bright")
+							case 104:
+								styles.setForeground("terminal-background-blue-bright")
+							case 105:
+								styles.setForeground("terminal-background-magenta-bright")
+							case 106:
+								styles.setForeground("terminal-background-cyan-bright")
+							case 107:
+								styles.setForeground("terminal-background-white-bright")
 							default:
 								throw new RuntimeException("Unknown style " + it + " with params " + params)
 						}
 					]
 				} else if(character.toString().equals("A")) {
-					println("caret up")
 					moveCaretUp(1)
 				} else if(character.toString().equals("B")) {
-					println("caret down")
 					moveCaretDown(1)
 				} else if(character.toString().equals("C")) {
-					println("caret right")
 					moveCaretRight(1)
 				} else if(character.toString().equals("D")) {
-					println("caret left")
 					moveCaretLeft(1)
 				} else if(character.toString().equals("K")) {
-					println("clearLine")
 					Platform.runLater [
 						clearLine()
 					]
+				} else if(character.toString().equals("H")) {
+					val x = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					val y = if(array.size() > 1) Integer.parseInt(array.get(1)) else 1
+					println('''moveTo(«x-1», «y-1»)''')
+					moveTo(x - 1, y - 1)
+				} else if(character.toString().equals("J")) {
+					val type = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
+					// TODO scrollback buffer
+					println('''deleteText(«getCaretPosition()», «getLength()»)''')
+					Platform.runLater [
+						switch (type) {
+							case 0: deleteText(getCaretPosition(), getLength())
+							case 1: deleteText(0, getCaretPosition())
+							case 2: deleteText(0, getLength())
+							case 3: deleteText(0, getLength())
+						}
+					]
 				} else {
-					throw new IllegalArgumentException("Unknown command " + character + " with params " + params)
+					throw new IllegalArgumentException("Unknown command " + character + " with params " + params + " " + array)
 				}
 				return
 			} else {

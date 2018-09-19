@@ -35,6 +35,31 @@
 	-fx-fill: #839496;
 }
 
+.styled-text-area .terminal-foreground-black-bright {
+	-fx-fill: derive(#073642, 20%);
+}
+.styled-text-area .terminal-foreground-red-bright {
+	-fx-fill: derive(#dc322f, 20%)
+}
+.styled-text-area .terminal-foreground-green-bright {
+	-fx-fill: derive(#859900, 20%)
+}
+.styled-text-area .terminal-foreground-yellow-bright {
+	-fx-fill: derive(#b58900, 20%)
+}
+.styled-text-area .terminal-foreground-blue-bright {
+	-fx-fill: derive(#268bd2, 20%)
+}
+.styled-text-area .terminal-foreground-magenta-bright {
+	-fx-fill: derive(#d33682, 20%)
+}
+.styled-text-area .terminal-foreground-cyan-bright {
+	-fx-fill: derive(#2aa198, 20%)
+}
+.styled-text-area .terminal-foreground-white-bright {
+	-fx-fill: derive(#839496, 20%)
+}
+
 .styled-text-area .terminal-background-black {
 	-rtfx-background-color: #073642;
 }
@@ -58,4 +83,29 @@
 }
 .styled-text-area .terminal-background-white {
 	-rtfx-background-color: #839496;
+}
+
+.styled-text-area .terminal-background-black-bright {
+	-rtfx-background-color: derive(#073642, 20%);
+}
+.styled-text-area .terminal-background-red-bright {
+	-rtfx-background-color: derive(#dc322f, 20%)
+}
+.styled-text-area .terminal-background-green-bright {
+	-rtfx-background-color: derive(#859900, 20%)
+}
+.styled-text-area .terminal-background-yellow-bright {
+	-rtfx-background-color: derive(#b58900, 20%)
+}
+.styled-text-area .terminal-background-blue-bright {
+	-rtfx-background-color: derive(#268bd2, 20%)
+}
+.styled-text-area .terminal-background-magenta-bright {
+	-rtfx-background-color: derive(#d33682, 20%)
+}
+.styled-text-area .terminal-background-cyan-bright {
+	-rtfx-background-color: derive(#2aa198, 20%)
+}
+.styled-text-area .terminal-background-white-bright {
+	-rtfx-background-color: derive(#839496, 20%)
 }

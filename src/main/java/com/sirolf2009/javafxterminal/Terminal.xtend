@@ -8,6 +8,7 @@ import java.io.PrintWriter
 import java.util.List
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
+import org.eclipse.xtend.lib.annotations.Accessors
 
 /**
  * The division of labor between the terminal and the shell is not completely obvious. Here are their main tasks.
@@ -22,9 +23,10 @@ import javafx.scene.input.KeyEvent
  *     Job control (launching programs in the background and managing them) is mostly performed by the shell. However, it's the terminal that handles key combinations like Ctrl+C to kill the foreground job and Ctrl+Z to suspend it.
  *  
  */
-class Terminal extends TerminalView {
+@Accessors class Terminal extends TerminalView implements AutoCloseable {
 
 	val PtyProcess process
+	val PrintWriter writer
 
 	new(List<String> command) throws IOException {
 		this(PtyProcess.exec(command, #{"TERM" -> "ansi", "COLORTERM" -> "truecolor", "GDM_LANG" -> "en-US.UTF-8", "LANG" -> "en_US.UTF-8"}))
@@ -34,54 +36,32 @@ class Terminal extends TerminalView {
 		super(new InputStreamReader(process.getInputStream()))
 		this.process = process
 		setEditable(true)
-//		caretSelectionBind.showCaret = CaretVisibility.ON
-//		val preventSelectionOrRightArrowNavigation = InputMap.consume(
-//			anyOf(
-//				mousePressed(),
-//				// prevent selection via (CTRL + ) SHIFT + [LEFT, UP, DOWN]
-//				keyPressed(LEFT, SHIFT_DOWN, SHORTCUT_ANY),
-//				keyPressed(KP_LEFT, SHIFT_DOWN, SHORTCUT_ANY),
-//				keyPressed(UP, SHIFT_DOWN, SHORTCUT_ANY),
-//				keyPressed(KP_UP, SHIFT_DOWN, SHORTCUT_ANY),
-//				keyPressed(DOWN, SHIFT_DOWN, SHORTCUT_ANY),
-//				keyPressed(KP_DOWN, SHIFT_DOWN, SHORTCUT_ANY),
-//				// prevent selection via mouse events
-//				eventType(MouseEvent.MOUSE_DRAGGED),
-//				eventType(MouseEvent.DRAG_DETECTED),
-//				// prevent any right arrow movement, regardless of modifiers
-//				keyPressed(RIGHT, SHORTCUT_ANY, SHIFT_ANY),
-//				keyPressed(KP_RIGHT, SHORTCUT_ANY, SHIFT_ANY)
-//			)
-//		);
-//		Nodes.addInputMap(this, preventSelectionOrRightArrowNavigation)
-//		Nodes.addInputMap(this, InputMap.sequence(
-//			consume(keyPressed(LEFT, SHORTCUT_ANY, SHIFT_ANY)) [
-//				println(getStyleSpans(0, getText().length()))
-//				println(getStyleSpans(0, getText().length()).size())
-//			]
-//		))
-		val writer = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))
+		writer = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))
 		addEventFilter(KeyEvent.ANY) [
 			if(getEventType() == KeyEvent.KEY_RELEASED) {
 				if(getCode().equals(KeyCode.UP)) {
-					writer.append("\u001B[A")
-					writer.flush()
+					command("\u001B[A")
 				} else if(getCode().equals(KeyCode.RIGHT)) {
-					writer.append("\u001B[C")
-					writer.flush()
+					command("\u001B[C")
 				} else if(getCode().equals(KeyCode.DOWN)) {
-					writer.append("\u001B[B")
-					writer.flush()
+					command("\u001B[B")
 				} else if(getCode().equals(KeyCode.LEFT)) {
-					writer.append("\u001B[D")
-					writer.flush()
+					command("\u001B[D")
 				} else {
-					writer.append(getText())
-					writer.flush()
+					command(getText())
 				}
 			}
 			consume()
 		]
+	}
+
+	def command(String command) {
+		writer.append(command)
+		writer.flush()
+	}
+	
+	override close() throws Exception {
+		writer.close()
 	}
 
 }
