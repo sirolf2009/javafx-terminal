@@ -9,6 +9,7 @@ import java.util.List
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import org.eclipse.xtend.lib.annotations.Accessors
+import javafx.scene.input.MouseEvent
 
 /**
  * The division of labor between the terminal and the shell is not completely obvious. Here are their main tasks.
@@ -50,6 +51,12 @@ import org.eclipse.xtend.lib.annotations.Accessors
 				} else {
 					command(getText())
 				}
+			}
+			consume()
+		]
+		addEventFilter(MouseEvent.ANY) [
+			if(getEventType() == MouseEvent.MOUSE_CLICKED) {
+				requestFocus()
 			}
 			consume()
 		]

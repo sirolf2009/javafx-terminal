@@ -6,7 +6,6 @@ import java.util.List
 import java.util.Set
 import javafx.application.Platform
 import org.fxmisc.richtext.CodeArea
-import org.fxmisc.richtext.NavigationActions.SelectionPolicy
 
 class TerminalView extends CodeArea {
 
@@ -345,6 +344,7 @@ class TerminalView extends CodeArea {
 			replaceText(getCaretPosition(), getCaretPosition() + 1, character.toString())
 		}
 		setStyle(getCaretPosition() - 1, getCaretPosition(), styles.toList())
+		requestFollowCaret()
 	}
 
 	def clearLine() {
