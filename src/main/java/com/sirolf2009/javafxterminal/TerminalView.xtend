@@ -1,10 +1,13 @@
 package com.sirolf2009.javafxterminal
 
+import com.sun.javafx.tk.Toolkit
 import java.io.Reader
 import java.util.HashSet
 import java.util.List
 import java.util.Set
 import javafx.application.Platform
+import javafx.beans.property.SimpleIntegerProperty
+import javafx.scene.text.Font
 import org.fxmisc.richtext.CodeArea
 
 class TerminalView extends CodeArea {
@@ -12,6 +15,7 @@ class TerminalView extends CodeArea {
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
 	static val NEWLINE = 10 as char
+	static val CARRIAGE_RETURN = 13 as char
 	static val ESCAPE = 27 as char
 
 	// http://ascii-table.com/ansi-escape-sequences.php
@@ -24,15 +28,22 @@ class TerminalView extends CodeArea {
 
 	val styles = new HashSet<String>()
 
+	val columns = new SimpleIntegerProperty()
+	val rows = new SimpleIntegerProperty()
+
 	new(Reader reader) {
 		getStyleClass().add("terminal")
 		setEditable(false)
+
+		widthProperty().addListener[computeRowCols()]
+		heightProperty().addListener[computeRowCols()]
+		parentProperty().addListener[computeRowCols()]
 
 		new Thread [
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-				println('''adding char «char»: «char as char»''')
+				println('''read char «char»: «char as char»''')
 
 				try {
 					buffer.append(char as char)
@@ -48,6 +59,7 @@ class TerminalView extends CodeArea {
 							val stylesCopy = styles.toList()
 							Platform.runLater [
 								insertChar(character, stylesCopy)
+								getUndoManager().preventMerge()
 							]
 						} else if(next == MULTI_CSI) {
 							parseControlSequence(reader)
@@ -56,18 +68,35 @@ class TerminalView extends CodeArea {
 						} else if(next == BEL) {
 							println("bell")
 						} else {
+							println("dud: " + char as int + " " + char as char)
 							val stylesCopy = styles.toList()
 							Platform.runLater [
 								insertChar(character, stylesCopy)
+								getUndoManager().preventMerge()
 								insertChar(next as char, stylesCopy)
+								getUndoManager().preventMerge()
 							]
 						}
-					} else if(char >= 32 || char == NEWLINE as int) {
+					} else if(char >= 32) {
 						val stylesCopy = styles.toList()
 						Platform.runLater [
 							insertChar(character, stylesCopy)
+							getUndoManager().preventMerge()
+						]
+					} else if(char == NEWLINE) {
+						val stylesCopy = styles.toList()
+						Platform.runLater [
+							moveTo(getCurrentParagraph(), getParagraph(getCurrentParagraph()).length())
+							insertChar(character, stylesCopy)
+							getUndoManager().preventMerge()
+						]
+					} else if(char == CARRIAGE_RETURN) {
+						Platform.runLater [
+							moveTo(getCurrentParagraph(), 0)
+							getUndoManager().preventMerge()
 						]
 					}
+
 				} catch(Exception e) {
 					System.err.println("Failed to add char " + char + ": " + (char as char))
 					e.printStackTrace()
@@ -85,6 +114,7 @@ class TerminalView extends CodeArea {
 			character = characterCode as char
 			if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
+				println("Running command " + character + " with params " + array)
 				if(character.toString().equals("m")) {
 					array.map[Integer.parseInt(it)].forEach [
 						switch (it) {
@@ -248,22 +278,38 @@ class TerminalView extends CodeArea {
 						}
 					]
 				} else if(character.toString().equals("A")) {
-					moveCaretUp(1)
+					Platform.runLater[
+						moveCaretUp(1)
+						getUndoManager().preventMerge()
+					]
 				} else if(character.toString().equals("B")) {
-					moveCaretDown(1)
+					Platform.runLater[
+						moveCaretDown(1)
+						getUndoManager().preventMerge()
+					]
 				} else if(character.toString().equals("C")) {
-					moveCaretRight(1)
+					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					Platform.runLater[
+						moveCaretRight(amount)
+						getUndoManager().preventMerge()
+					]
 				} else if(character.toString().equals("D")) {
-					moveCaretLeft(1)
+					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					Platform.runLater[
+						moveCaretLeft(amount)
+						getUndoManager().preventMerge()
+					]
 				} else if(character.toString().equals("K")) {
 					Platform.runLater [
 						clearLine()
+						getUndoManager().preventMerge()
 					]
 				} else if(character.toString().equals("H")) {
 					val x = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
 					val y = if(array.size() > 1) Integer.parseInt(array.get(1)) else 1
 					println('''moveTo(«x-1», «y-1»)''')
 					moveTo(x - 1, y - 1)
+					getUndoManager().preventMerge()
 				} else if(character.toString().equals("J")) {
 					val type = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
 					// TODO scrollback buffer
@@ -275,6 +321,7 @@ class TerminalView extends CodeArea {
 							case 2: deleteText(0, getLength())
 							case 3: deleteText(0, getLength())
 						}
+						getUndoManager().preventMerge()
 					]
 				} else {
 					throw new IllegalArgumentException("Unknown command " + character + " with params " + params + " " + array)
@@ -292,6 +339,7 @@ class TerminalView extends CodeArea {
 		while((character = reader.read()) != -1) {
 			if(character as char == BEL) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
+				println("os command with " + character + " with params " + array)
 //				return new AnsiOperatingSystemCommand(index, array);
 				// TODO execute command
 				return
@@ -316,11 +364,38 @@ class TerminalView extends CodeArea {
 	}
 
 	def moveCaretLeft(int amount) {
-		moveTo(getCaretPosition() - amount)
+		(0 ..< amount).forEach [
+			moveCaretLeft()
+		]
+	}
+
+	def moveCaretLeft() {
+		if(getCaretColumn() > 0) {
+			moveTo(getCaretPosition() - 1)
+		}
 	}
 
 	def moveCaretRight(int amount) {
-		moveTo(getCaretPosition() + amount)
+		(0 ..< amount).forEach [
+			moveCaretRight()
+		]
+	}
+
+	def moveCaretRight() {
+		val caretPosition = getCaretPosition()
+		val length = getLength()
+		val columns = columns.get()
+		try {
+			if(caretPosition < columns) {
+				if(caretPosition > length) {
+					insertChar(' ', #[])
+				} else {
+					moveTo(getCaretPosition() + 1)
+				}
+			}
+		} catch(Exception e) {
+			throw new RuntimeException('''Failed to move the caret right with caretPosition=«caretPosition» and length=«length» and columns=«columns»''', e)
+		}
 	}
 
 	def moveCaretUp(int amount) {
@@ -338,17 +413,34 @@ class TerminalView extends CodeArea {
 	}
 
 	def insertChar(Character character, List<String> styles) {
-		if(getCaretPosition() == getLength()) {
-			insertText(getCaretPosition(), character.toString())
-		} else {
-			replaceText(getCaretPosition(), getCaretPosition() + 1, character.toString())
+		val caretPosition = getCaretPosition()
+		val length = getLength()
+		try {
+			if(caretPosition >= length) {
+				insertText(length, character.toString())
+			} else {
+				replaceText(getCaretPosition(), getCaretPosition() + 1, character.toString())
+			}
+			setStyle(getCaretPosition() - 1, getCaretPosition(), styles.toList())
+			requestFollowCaret()
+		} catch(Exception e) {
+			throw new RuntimeException('''Failed to insert char «(character as char) as int»: «character» with styles «styles» and caretPosition=«caretPosition» and length=«length»''', e)
 		}
-		setStyle(getCaretPosition() - 1, getCaretPosition(), styles.toList())
-		requestFollowCaret()
 	}
 
 	def clearLine() {
 		replaceText(getCurrentParagraph(), getCaretColumn(), getCurrentParagraph(), getParagraph(getCurrentParagraph()).length(), "")
+	}
+
+	def computeRowCols() {
+		if(getWidth() != 0 && getHeight() != 0) {
+			val font = Font.font("Monospaced")
+			val metrics = Toolkit.getToolkit().getFontLoader().getFontMetrics(font)
+			val charWidth = metrics.computeStringWidth("a")
+			val charHeight = metrics.getLineHeight()
+			columns.set(Math.floor(getWidth() / charWidth) as int)
+			rows.set(Math.floor(getHeight() / charHeight) as int)
+		}
 	}
 
 }

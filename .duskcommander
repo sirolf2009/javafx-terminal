@@ -1,0 +1,4 @@
+build:mvn clean install
+pull:git pull
+commit:commit
+status:git status

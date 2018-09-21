@@ -10,6 +10,9 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import org.eclipse.xtend.lib.annotations.Accessors
 import javafx.scene.input.MouseEvent
+import com.pty4j.WinSize
+import javafx.scene.text.Font
+import com.sun.javafx.tk.Toolkit
 
 /**
  * The division of labor between the terminal and the shell is not completely obvious. Here are their main tasks.
@@ -60,13 +63,27 @@ import javafx.scene.input.MouseEvent
 			}
 			consume()
 		]
+		widthProperty().addListener[computeWinSize()]
+		heightProperty().addListener[computeWinSize()]
+		parentProperty().addListener[computeWinSize()]
+		setWrapText(true)
 	}
 
-	def command(String command) {
+	def computeWinSize() {
+		if(getWidth() != 0 && getHeight() != 0) {
+			val font = Font.font("Monospaced")
+			val metrics = Toolkit.getToolkit().getFontLoader().getFontMetrics(font)
+			val charWidth = metrics.computeStringWidth("a")
+			val charHeight = metrics.getLineHeight()
+			process.setWinSize(new WinSize(Math.floor(getWidth() / charWidth) as int, Math.floor(getHeight() / charHeight) as int))
+		}
+	}
+
+	def synchronized command(String command) {
 		writer.append(command)
 		writer.flush()
 	}
-	
+
 	override close() throws Exception {
 		writer.close()
 	}

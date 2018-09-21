@@ -5,6 +5,10 @@ import javafx.scene.Scene
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.stage.Stage
+import javafx.scene.control.ToolBar
+import javafx.scene.control.Button
+import javafx.geometry.Orientation
+import javafx.scene.control.ListView
 
 class JavaFXTerminalApp extends Application {
 	
@@ -14,10 +18,23 @@ class JavaFXTerminalApp extends Application {
 //			solarizedDark()
 //			HBox.setHgrow(it, Priority.ALWAYS)
 //		])
-		root.getChildren().add(new Terminal(#["/bin/bash"]) => [
+
+		val terminal = new Terminal(#["/usr/bin/fish"]) => [
 			solarizedDark()
 			HBox.setHgrow(it, Priority.ALWAYS)
-		])
+		] 
+		
+		val undo = new Button("undo") => [
+			onAction = [terminal.undo()]
+		]
+		
+			val toolbar = new ToolBar(undo) => [
+			orientation = Orientation.VERTICAL
+		]
+
+		root.getChildren().add(toolbar)
+
+		root.getChildren().add(terminal)
 		
 		val scene = new Scene(root, 1024, 768)
 
