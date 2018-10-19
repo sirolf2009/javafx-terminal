@@ -14,6 +14,7 @@ class TerminalView extends CodeArea {
 
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
+	static val BACKSPACE = 8 as char
 	static val NEWLINE = 10 as char
 	static val CARRIAGE_RETURN = 13 as char
 	static val ESCAPE = 27 as char
@@ -95,8 +96,14 @@ class TerminalView extends CodeArea {
 							moveTo(getCurrentParagraph(), 0)
 							getUndoManager().preventMerge()
 						]
+					} else if(char == BACKSPACE) {
+						Platform.runLater [
+							deletePreviousChar()
+							getUndoManager().preventMerge()
+						]
+					} else {
+						System.err.println("I don't know what to do with char " + char + ": " + (char as char))
 					}
-
 				} catch(Exception e) {
 					System.err.println("Failed to add char " + char + ": " + (char as char))
 					e.printStackTrace()

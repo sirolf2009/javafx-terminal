@@ -1,14 +1,13 @@
 package com.sirolf2009.javafxterminal
 
 import javafx.application.Application
+import javafx.geometry.Orientation
 import javafx.scene.Scene
+import javafx.scene.control.Button
+import javafx.scene.control.ToolBar
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.stage.Stage
-import javafx.scene.control.ToolBar
-import javafx.scene.control.Button
-import javafx.geometry.Orientation
-import javafx.scene.control.ListView
 
 class JavaFXTerminalApp extends Application {
 	
