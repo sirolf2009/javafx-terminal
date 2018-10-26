@@ -6,6 +6,9 @@
 .styled-text-area .text {
     -fx-fill: #839496;
 }
+.styled-text-area .caret {
+    -fx-stroke: #839496;
+}
 .styled-text-area .terminal-bold {
 	-fx-font-weight: bold;
 }

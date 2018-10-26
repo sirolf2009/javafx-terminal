@@ -1,16 +1,40 @@
 package com.sirolf2009.javafxterminal
 
+import com.sirolf2009.javafxterminal.command.CarriageReturn
+import com.sirolf2009.javafxterminal.command.ClearLine
+import com.sirolf2009.javafxterminal.command.Command
+import com.sirolf2009.javafxterminal.command.DeletePreviousChar
+import com.sirolf2009.javafxterminal.command.DeleteText
+import com.sirolf2009.javafxterminal.command.InsertChar
+import com.sirolf2009.javafxterminal.command.MoveCaretDown
+import com.sirolf2009.javafxterminal.command.MoveCaretLeft
+import com.sirolf2009.javafxterminal.command.MoveCaretRight
+import com.sirolf2009.javafxterminal.command.MoveCaretUp
+import com.sirolf2009.javafxterminal.command.MoveTo
+import com.sirolf2009.javafxterminal.command.Newline
 import com.sun.javafx.tk.Toolkit
+import io.reactivex.Observable
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.PublishSubject
+import io.reactivex.subjects.Subject
 import java.io.Reader
+import java.util.ArrayList
 import java.util.HashSet
 import java.util.List
+import java.util.Optional
 import java.util.Set
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.BiPredicate
 import javafx.application.Platform
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.scene.text.Font
+import org.eclipse.xtend.lib.annotations.Accessors
+import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
+import com.sirolf2009.javafxterminal.command.InsertText
 
-class TerminalView extends CodeArea {
+@Accessors class TerminalView extends CodeArea {
 
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
@@ -32,9 +56,13 @@ class TerminalView extends CodeArea {
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
 
+	val Subject<Command> commands = PublishSubject.create()
+
 	new(Reader reader) {
 		getStyleClass().add("terminal")
 		setEditable(false)
+
+		setShowCaret(CaretVisibility.ON)
 
 		widthProperty().addListener[computeRowCols()]
 		heightProperty().addListener[computeRowCols()]
@@ -44,8 +72,7 @@ class TerminalView extends CodeArea {
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-				println('''read char «char»: «char as char»''')
-
+//				println('''read char «char» «char.getCharacterName()»: «char as char»''')
 				try {
 					buffer.append(char as char)
 					val character = char as char
@@ -69,38 +96,17 @@ class TerminalView extends CodeArea {
 						} else if(next == BEL) {
 							println("bell")
 						} else {
-							println("dud: " + char as int + " " + char as char)
-							val stylesCopy = styles.toList()
-							Platform.runLater [
-								insertChar(character, stylesCopy)
-								getUndoManager().preventMerge()
-								insertChar(next as char, stylesCopy)
-								getUndoManager().preventMerge()
-							]
+							commands.onNext(new InsertChar(character, styles.toList()))
+							commands.onNext(new InsertChar(next as char, styles.toList()))
 						}
 					} else if(char >= 32) {
-						val stylesCopy = styles.toList()
-						Platform.runLater [
-							insertChar(character, stylesCopy)
-							getUndoManager().preventMerge()
-						]
+						commands.onNext(new InsertChar(character, styles.toList()))
 					} else if(char == NEWLINE) {
-						val stylesCopy = styles.toList()
-						Platform.runLater [
-							moveTo(getCurrentParagraph(), getParagraph(getCurrentParagraph()).length())
-							insertChar(character, stylesCopy)
-							getUndoManager().preventMerge()
-						]
+						commands.onNext(new Newline(styles.toList()))
 					} else if(char == CARRIAGE_RETURN) {
-						Platform.runLater [
-							moveTo(getCurrentParagraph(), 0)
-							getUndoManager().preventMerge()
-						]
+						commands.onNext(new CarriageReturn())
 					} else if(char == BACKSPACE) {
-						Platform.runLater [
-							deletePreviousChar()
-							getUndoManager().preventMerge()
-						]
+						commands.onNext(new DeletePreviousChar())
 					} else {
 						System.err.println("I don't know what to do with char " + char + ": " + (char as char))
 					}
@@ -111,6 +117,29 @@ class TerminalView extends CodeArea {
 			}
 			reader.close()
 		].start()
+
+		commands.observeOn(Schedulers.io).subscribe [
+//			println(it)
+		]
+		commands.bufferWhile[a,b|
+			if(a.getClass() == InsertChar && b.getClass() == InsertChar) {
+				return (a as InsertChar).getStyles().equals((b as InsertChar).getStyles())
+			}
+			return false
+		].flatMap[
+			if(size() == 1) {
+				return Observable.just(get(0))
+			} else if(size > 0) {
+				return Observable.just(new InsertText(map[it as InsertChar].map[getCharacter()+""].join(), (get(0) as InsertChar).getStyles()))
+			} else {
+				return Observable.empty()
+			}
+		].doOnNext [
+			System.out.print("")
+		].observeOn(JavaFxScheduler.platform()).subscribe [
+			println(it)
+//			execute(this)
+		]
 	}
 
 	def parseControlSequence(Reader reader) {
@@ -121,7 +150,7 @@ class TerminalView extends CodeArea {
 			character = characterCode as char
 			if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
-				println("Running command " + character + " with params " + array)
+//				println("Running command " + character + " with params " + array)
 				if(character.toString().equals("m")) {
 					array.map[Integer.parseInt(it)].forEach [
 						switch (it) {
@@ -285,51 +314,25 @@ class TerminalView extends CodeArea {
 						}
 					]
 				} else if(character.toString().equals("A")) {
-					Platform.runLater[
-						moveCaretUp(1)
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new MoveCaretUp(1))
 				} else if(character.toString().equals("B")) {
-					Platform.runLater[
-						moveCaretDown(1)
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new MoveCaretDown(1))
 				} else if(character.toString().equals("C")) {
 					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
-					Platform.runLater[
-						moveCaretRight(amount)
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new MoveCaretRight(amount))
 				} else if(character.toString().equals("D")) {
 					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
-					Platform.runLater[
-						moveCaretLeft(amount)
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new MoveCaretLeft(amount))
 				} else if(character.toString().equals("K")) {
-					Platform.runLater [
-						clearLine()
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new ClearLine())
 				} else if(character.toString().equals("H")) {
 					val x = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
 					val y = if(array.size() > 1) Integer.parseInt(array.get(1)) else 1
-					println('''moveTo(«x-1», «y-1»)''')
-					moveTo(x - 1, y - 1)
-					getUndoManager().preventMerge()
+					commands.onNext(new MoveTo(x, y))
 				} else if(character.toString().equals("J")) {
 					val type = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
 					// TODO scrollback buffer
-					println('''deleteText(«getCaretPosition()», «getLength()»)''')
-					Platform.runLater [
-						switch (type) {
-							case 0: deleteText(getCaretPosition(), getLength())
-							case 1: deleteText(0, getCaretPosition())
-							case 2: deleteText(0, getLength())
-							case 3: deleteText(0, getLength())
-						}
-						getUndoManager().preventMerge()
-					]
+					commands.onNext(new DeleteText(type))
 				} else {
 					throw new IllegalArgumentException("Unknown command " + character + " with params " + params + " " + array)
 				}
@@ -396,6 +399,7 @@ class TerminalView extends CodeArea {
 			if(caretPosition < columns) {
 				if(caretPosition > length) {
 					insertChar(' ', #[])
+					moveTo(getCaretPosition() + 1)
 				} else {
 					moveTo(getCaretPosition() + 1)
 				}
@@ -448,6 +452,27 @@ class TerminalView extends CodeArea {
 			columns.set(Math.floor(getWidth() / charWidth) as int)
 			rows.set(Math.floor(getHeight() / charHeight) as int)
 		}
+	}
+
+	def static <T> bufferWhile(Observable<T> obs, BiPredicate<T, T> predicate) {
+		val currentItems = new ArrayList()
+		val currentItem = new AtomicReference<T>()
+		obs.map [
+			if(currentItem.get() === null) {
+				currentItem.set(it)
+				currentItems.add(it)
+				return Optional.empty()
+			} else if(predicate.test(currentItem.get(), it)) {
+				currentItem.set(it)
+				currentItems.add(it)
+				return Optional.empty()
+			} else {
+				currentItem.set(it)
+				val copy = new ArrayList(currentItems)
+				currentItems.clear()
+				return Optional.of(copy)
+			}
+		].filter[isPresent()].map[get()]
 	}
 
 }
