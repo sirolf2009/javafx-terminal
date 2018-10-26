@@ -33,6 +33,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
 import com.sirolf2009.javafxterminal.command.InsertText
+import java.util.concurrent.TimeUnit
 
 @Accessors class TerminalView extends CodeArea {
 
@@ -121,24 +122,39 @@ import com.sirolf2009.javafxterminal.command.InsertText
 		commands.observeOn(Schedulers.io).subscribe [
 //			println(it)
 		]
-		commands.bufferWhile[a,b|
-			if(a.getClass() == InsertChar && b.getClass() == InsertChar) {
-				return (a as InsertChar).getStyles().equals((b as InsertChar).getStyles())
+		commands.buffer(100, TimeUnit.MILLISECONDS).flatMap [
+			val commands = new ArrayList()
+			val chars = new ArrayList<InsertChar>()
+			forEach[
+				if(it instanceof InsertChar) {
+					if(chars.isEmpty()) {
+						chars.add(it)
+					} else {
+						if(chars.get(0).getStyles().equals(getStyles())) {
+							chars.add(it)
+						} else {
+							commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
+							chars.clear()
+						}
+					}
+				} else {
+					if(!chars.isEmpty()) {
+						commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
+						chars.clear()
+					}
+					commands.add(it)
+				}
+			]
+			if(!chars.isEmpty()) {
+				commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
+				chars.clear()
 			}
-			return false
-		].flatMap[
-			if(size() == 1) {
-				return Observable.just(get(0))
-			} else if(size > 0) {
-				return Observable.just(new InsertText(map[it as InsertChar].map[getCharacter()+""].join(), (get(0) as InsertChar).getStyles()))
-			} else {
-				return Observable.empty()
-			}
+			return Observable.fromIterable(commands)
 		].doOnNext [
 			System.out.print("")
 		].observeOn(JavaFxScheduler.platform()).subscribe [
 			println(it)
-//			execute(this)
+			execute(this)
 		]
 	}
 
