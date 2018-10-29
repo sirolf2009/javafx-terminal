@@ -1,6 +1,9 @@
 package com.sirolf2009.javafxterminal
 
 import com.pty4j.PtyProcess
+import com.pty4j.WinSize
+import com.sun.javafx.tk.Toolkit
+import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -8,11 +11,9 @@ import java.io.PrintWriter
 import java.util.List
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
-import org.eclipse.xtend.lib.annotations.Accessors
 import javafx.scene.input.MouseEvent
-import com.pty4j.WinSize
 import javafx.scene.text.Font
-import com.sun.javafx.tk.Toolkit
+import org.eclipse.xtend.lib.annotations.Accessors
 
 /**
  * The division of labor between the terminal and the shell is not completely obvious. Here are their main tasks.
@@ -37,7 +38,7 @@ import com.sun.javafx.tk.Toolkit
 	}
 
 	new(PtyProcess process) {
-		super(new InputStreamReader(process.getInputStream()))
+		super(new BufferedReader(new InputStreamReader(process.getInputStream())))
 		this.process = process
 		setEditable(true)
 		writer = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))

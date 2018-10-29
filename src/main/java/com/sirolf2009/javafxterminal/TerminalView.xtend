@@ -6,6 +6,7 @@ import com.sirolf2009.javafxterminal.command.Command
 import com.sirolf2009.javafxterminal.command.DeletePreviousChar
 import com.sirolf2009.javafxterminal.command.DeleteText
 import com.sirolf2009.javafxterminal.command.InsertChar
+import com.sirolf2009.javafxterminal.command.InsertText
 import com.sirolf2009.javafxterminal.command.MoveCaretDown
 import com.sirolf2009.javafxterminal.command.MoveCaretLeft
 import com.sirolf2009.javafxterminal.command.MoveCaretRight
@@ -15,7 +16,6 @@ import com.sirolf2009.javafxterminal.command.Newline
 import com.sun.javafx.tk.Toolkit
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
-import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 import java.io.Reader
@@ -24,6 +24,7 @@ import java.util.HashSet
 import java.util.List
 import java.util.Optional
 import java.util.Set
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiPredicate
 import javafx.application.Platform
@@ -32,8 +33,7 @@ import javafx.scene.text.Font
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
-import com.sirolf2009.javafxterminal.command.InsertText
-import java.util.concurrent.TimeUnit
+import io.reactivex.schedulers.Schedulers
 
 @Accessors class TerminalView extends CodeArea {
 
@@ -58,6 +58,7 @@ import java.util.concurrent.TimeUnit
 	val rows = new SimpleIntegerProperty()
 
 	val Subject<Command> commands = PublishSubject.create()
+	val Observable<Command> aggregatedCommands
 
 	new(Reader reader) {
 		getStyleClass().add("terminal")
@@ -119,41 +120,8 @@ import java.util.concurrent.TimeUnit
 			reader.close()
 		].start()
 
-		commands.observeOn(Schedulers.io).subscribe [
-//			println(it)
-		]
-		commands.buffer(100, TimeUnit.MILLISECONDS).flatMap [
-			val commands = new ArrayList()
-			val chars = new ArrayList<InsertChar>()
-			forEach[
-				if(it instanceof InsertChar) {
-					if(chars.isEmpty()) {
-						chars.add(it)
-					} else {
-						if(chars.get(0).getStyles().equals(getStyles())) {
-							chars.add(it)
-						} else {
-							commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
-							chars.clear()
-						}
-					}
-				} else {
-					if(!chars.isEmpty()) {
-						commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
-						chars.clear()
-					}
-					commands.add(it)
-				}
-			]
-			if(!chars.isEmpty()) {
-				commands.add(new InsertText(chars.map[getCharacter() + ""].join(), chars.get(0).getStyles()))
-				chars.clear()
-			}
-			return Observable.fromIterable(commands)
-		].doOnNext [
-			System.out.print("")
-		].observeOn(JavaFxScheduler.platform()).subscribe [
-			println(it)
+		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).aggregate()
+		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
 			execute(this)
 		]
 	}
@@ -412,15 +380,14 @@ import java.util.concurrent.TimeUnit
 		val length = getLength()
 		val columns = columns.get()
 		try {
-			if(caretPosition < columns) {
-				if(caretPosition > length) {
-					insertChar(' ', #[])
-					moveTo(getCaretPosition() + 1)
-				} else {
-					moveTo(getCaretPosition() + 1)
-				}
+			if(caretPosition > length) {
+				insertChar(' ', #[])
+				moveTo(getCaretPosition() + 1)
+			} else {
+				moveTo(getCaretPosition() + 1)
 			}
 		} catch(Exception e) {
+			e.printStackTrace()
 			throw new RuntimeException('''Failed to move the caret right with caretPosition=«caretPosition» and length=«length» and columns=«columns»''', e)
 		}
 	}
@@ -468,6 +435,41 @@ import java.util.concurrent.TimeUnit
 			columns.set(Math.floor(getWidth() / charWidth) as int)
 			rows.set(Math.floor(getHeight() / charHeight) as int)
 		}
+	}
+
+	def static aggregate(Observable<List<Command>> obs) {
+		obs.flatMap [
+			val commands = new ArrayList()
+			val chars = new ArrayList<InsertChar>()
+			val aggregate = [ List<InsertChar> list |
+				val aggregatedCommand = new InsertText(list.map[getCharacter() + ""].join(), list.get(0).getStyles())
+				commands.add(aggregatedCommand)
+				chars.clear()
+			]
+			forEach[
+				if(it instanceof InsertChar) {
+					if(chars.isEmpty()) {
+						chars.add(it)
+					} else {
+						if(chars.get(0).getStyles().equals(getStyles())) {
+							chars.add(it)
+						} else {
+							aggregate.apply(chars)
+							chars.add(it)
+						}
+					}
+				} else {
+					if(!chars.isEmpty()) {
+						aggregate.apply(chars)
+					}
+					commands.add(it)
+				}
+			]
+			if(!chars.isEmpty()) {
+				aggregate.apply(chars)
+			}
+			return Observable.fromIterable(commands)
+		]
 	}
 
 	def static <T> bufferWhile(Observable<T> obs, BiPredicate<T, T> predicate) {
