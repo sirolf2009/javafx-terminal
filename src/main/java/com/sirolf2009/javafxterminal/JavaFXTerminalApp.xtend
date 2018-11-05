@@ -1,32 +1,26 @@
 package com.sirolf2009.javafxterminal
 
+import com.sirolf2009.javafxterminal.command.Command
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import java.util.Date
 import javafx.application.Application
 import javafx.scene.Scene
+import javafx.scene.control.ContextMenu
+import javafx.scene.control.ListCell
 import javafx.scene.control.ListView
+import javafx.scene.control.MenuItem
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.stage.Stage
 import javafx.stage.StageStyle
-import javafx.scene.control.ListCell
-import javafx.scene.control.ContextMenu
-import javafx.scene.control.MenuItem
-import com.sirolf2009.javafxterminal.command.Command
 
 class JavaFXTerminalApp extends Application {
 
 	override start(Stage primaryStage) throws Exception {
-		val root = new HBox()
-//		root.getChildren().add(new TerminalView(new BufferedReader(new StringReader("\u001B[36mTerminal View\u001B[0m"))) => [
-//			solarizedDark()
-//			HBox.setHgrow(it, Priority.ALWAYS)
-//		])
 		val terminal = new Terminal(#["/usr/bin/fish"]) => [
 			solarizedDark()
 			HBox.setHgrow(it, Priority.ALWAYS)
 		]
-
-		root.getChildren().add(terminal)
 
 		val newStage = new Stage(StageStyle.UTILITY)
 		val aggregatedCommands = createCommandListview(terminal)
@@ -40,7 +34,7 @@ class JavaFXTerminalApp extends Application {
 		newStage.setScene(new Scene(new HBox(aggregatedCommands, commands)))
 		newStage.show()
 
-		val scene = new Scene(root, 1024, 768)
+		val scene = new Scene(terminal, 1024, 768)
 
 		primaryStage.setScene(scene)
 		primaryStage.show()
@@ -56,7 +50,7 @@ class JavaFXTerminalApp extends Application {
 						if(item === null || empty) {
 							setText("")
 						} else {
-							setText(item.toString())
+							setText(new Date()+" "+ item.toString())
 						}
 					}
 

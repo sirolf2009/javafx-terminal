@@ -39,6 +39,9 @@ import org.eclipse.xtend.lib.annotations.Accessors
 
 	new(PtyProcess process) {
 		super(new BufferedReader(new InputStreamReader(process.getInputStream())))
+		new Thread[
+			new BufferedReader(new InputStreamReader(process.getErrorStream())).lines().forEach[System.err.println(it)]
+		].start()
 		this.process = process
 		setEditable(true)
 		writer = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))

@@ -16,6 +16,7 @@ import com.sirolf2009.javafxterminal.command.Newline
 import com.sun.javafx.tk.Toolkit
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
+import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 import java.io.Reader
@@ -33,7 +34,6 @@ import javafx.scene.text.Font
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
-import io.reactivex.schedulers.Schedulers
 
 @Accessors class TerminalView extends CodeArea {
 
@@ -74,7 +74,7 @@ import io.reactivex.schedulers.Schedulers
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-//				println('''read char «char» «char.getCharacterName()»: «char as char»''')
+//				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 				try {
 					buffer.append(char as char)
 					val character = char as char
@@ -113,14 +113,14 @@ import io.reactivex.schedulers.Schedulers
 						System.err.println("I don't know what to do with char " + char + ": " + (char as char))
 					}
 				} catch(Exception e) {
-					System.err.println("Failed to add char " + char + ": " + (char as char))
+					System.err.println("Failed to add char " + char  + ": " + (char as char))
 					e.printStackTrace()
 				}
 			}
 			reader.close()
 		].start()
 
-		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).aggregate()
+		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).filter[size() > 0].aggregate()
 		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
 			execute(this)
 		]
@@ -132,7 +132,8 @@ import io.reactivex.schedulers.Schedulers
 		var char character
 		while((characterCode = reader.read()) != -1) {
 			character = characterCode as char
-			if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')) {
+			if(characterCode >= 0x40 && characterCode <= 0x7E) {
+//			if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
 //				println("Running command " + character + " with params " + array)
 				if(character.toString().equals("m")) {
@@ -245,6 +246,8 @@ import io.reactivex.schedulers.Schedulers
 									}
 								}
 							}
+							case 39:
+								styles.removeAll(styles.filter[startsWith("terminal-foreground")].toList())
 							case 40:
 								styles.setBackground("terminal-background-black")
 							case 41:
@@ -318,7 +321,7 @@ import io.reactivex.schedulers.Schedulers
 					// TODO scrollback buffer
 					commands.onNext(new DeleteText(type))
 				} else {
-					throw new IllegalArgumentException("Unknown command " + character + " with params " + params + " " + array)
+					println("Unknown command " + character + " with params " + params + " " + array)
 				}
 				return
 			} else {
