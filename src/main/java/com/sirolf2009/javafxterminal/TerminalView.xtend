@@ -34,6 +34,8 @@ import javafx.scene.text.Font
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
+import com.sirolf2009.javafxterminal.command.Bell
+import com.sirolf2009.javafxterminal.command.OSCommand
 
 @Accessors class TerminalView extends CodeArea {
 
@@ -63,8 +65,8 @@ import org.fxmisc.richtext.CodeArea
 
 	new(Reader reader) {
 		getStyleClass().add("terminal")
-		setEditable(false)
 
+		setEditable(false)
 		setShowCaret(CaretVisibility.ON)
 
 		widthProperty().addListener[computeRowCols()]
@@ -83,7 +85,7 @@ import org.fxmisc.richtext.CodeArea
 					if(character == SINGLE_CSI) {
 						parseControlSequence(reader)
 					} else if(character == BEL) {
-						println("bell")
+						commands.onNext(new Bell())
 					} else if(character == ESCAPE) {
 						val next = reader.read()
 						if(next == -1) {
@@ -97,7 +99,7 @@ import org.fxmisc.richtext.CodeArea
 						} else if(next == MULTI_OSC) {
 							parseOperatingSystemCommand(reader)
 						} else if(next == BEL) {
-							println("bell")
+							commands.onNext(new Bell())
 						} else {
 							commands.onNext(new InsertChar(character, styles.toList()))
 							commands.onNext(new InsertChar(next as char, styles.toList()))
@@ -339,11 +341,9 @@ import org.fxmisc.richtext.CodeArea
 		val params = new StringBuilder()
 		var int character
 		while((character = reader.read()) != -1) {
-			if(character as char == BEL) {
+			if(character == BEL as int) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
-				println("os command with " + character + " with params " + array)
-//				return new AnsiOperatingSystemCommand(index, array);
-				// TODO execute command
+				commands.onNext(new OSCommand(array))
 				return
 			} else {
 				params.append(character as char);
@@ -353,6 +353,12 @@ import org.fxmisc.richtext.CodeArea
 
 	def solarizedDark() {
 		getStylesheets().add(TerminalView.getResource("/solarized_dark.css").toExternalForm())
+	}
+	
+	def void bell() {
+	}
+	
+	def void osCommand(List<String> params) {
 	}
 
 	def static setForeground(Set<String> classes, String foreground) {
