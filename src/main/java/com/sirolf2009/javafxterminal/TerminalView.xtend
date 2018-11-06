@@ -40,6 +40,7 @@ import org.fxmisc.richtext.CodeArea
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
 	static val BACKSPACE = 8 as char
+	static val HORIZONTAL_TAB = 9 as char
 	static val NEWLINE = 10 as char
 	static val CARRIAGE_RETURN = 13 as char
 	static val ESCAPE = 27 as char
@@ -109,11 +110,13 @@ import org.fxmisc.richtext.CodeArea
 						commands.onNext(new CarriageReturn())
 					} else if(char == BACKSPACE) {
 						commands.onNext(new DeletePreviousChar())
+					} else if(char == HORIZONTAL_TAB) {
+						commands.onNext(new InsertChar(char as char, styles.toList()))
 					} else {
-						System.err.println("I don't know what to do with char " + char + ": " + (char as char))
+						System.err.println('''I don't know what to do with char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 					}
 				} catch(Exception e) {
-					System.err.println("Failed to add char " + char  + ": " + (char as char))
+					System.err.println('''Failed to add char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 					e.printStackTrace()
 				}
 			}
@@ -159,8 +162,10 @@ import org.fxmisc.richtext.CodeArea
 								val foreground = styles.findFirst[startsWith("terminal-foreground")]
 								val background = styles.findFirst[startsWith("terminal-background")]
 								styles.removeAll(foreground, background)
-								styles.add(foreground.replace("terminal-foreground", "terminal-background"))
-								styles.add(background.replace("terminal-background", "terminal-foreground"))
+								if(foreground !== null)
+									styles.add(foreground.replace("terminal-foreground", "terminal-background"))
+								if(background !== null)
+									styles.add(background.replace("terminal-background", "terminal-foreground"))
 							}
 							case 10: {
 								// TODO primary font
