@@ -34,7 +34,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	val PrintWriter writer
 
 	new(List<String> command) throws IOException {
-		this(PtyProcess.exec(command, #{"TERM" -> "ansi", "COLORTERM" -> "truecolor", "GDM_LANG" -> "en-US.UTF-8", "LANG" -> "en_US.UTF-8"}))
+		this(PtyProcess.exec(command, #{"TERM" -> "xterm-256color", "COLORTERM" -> "truecolor", "GDM_LANG" -> "en-US.UTF-8", "LANG" -> "en_US.UTF-8"}))
 	}
 
 	new(PtyProcess process) {

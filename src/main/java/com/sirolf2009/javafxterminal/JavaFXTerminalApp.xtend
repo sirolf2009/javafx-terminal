@@ -9,10 +9,12 @@ import javafx.scene.control.ContextMenu
 import javafx.scene.control.ListCell
 import javafx.scene.control.ListView
 import javafx.scene.control.MenuItem
+import javafx.scene.layout.AnchorPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.stage.Stage
 import javafx.stage.StageStyle
+import javafx.scene.paint.Color
 
 class JavaFXTerminalApp extends Application {
 
@@ -32,12 +34,24 @@ class JavaFXTerminalApp extends Application {
 			commands.getItems().add(it)
 		]
 		newStage.setScene(new Scene(new HBox(aggregatedCommands, commands)))
-		newStage.show()
-
-		val scene = new Scene(terminal, 1024, 768)
+//		newStage.show()
+		val terminalCanvas = new TerminalCanvas()
+		terminalCanvas.setText(0, 0, "Hello World")
+		terminalCanvas.setStyle(3, 0, #[[setStroke(Color.BLUE)]])
+		terminalCanvas.moveTo(11, 0)
+		terminalCanvas.newLine()
+		terminalCanvas.insertText("motherfuckers")
+		terminalCanvas.draw()
+		
+		AnchorPane.setTopAnchor(terminalCanvas, 0d)
+		AnchorPane.setRightAnchor(terminalCanvas, 0d)
+		AnchorPane.setBottomAnchor(terminalCanvas, 0d)
+		AnchorPane.setLeftAnchor(terminalCanvas, 0d)
+		val scene = new Scene(new AnchorPane(terminalCanvas), 1024, 768)
 
 		primaryStage.setScene(scene)
 		primaryStage.show()
+
 	}
 
 	def static createCommandListview(Terminal terminal) {
@@ -50,7 +64,7 @@ class JavaFXTerminalApp extends Application {
 						if(item === null || empty) {
 							setText("")
 						} else {
-							setText(new Date()+" "+ item.toString())
+							setText(new Date() + " " + item.toString())
 						}
 					}
 

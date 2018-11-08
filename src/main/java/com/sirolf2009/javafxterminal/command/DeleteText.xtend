@@ -1,18 +1,26 @@
 package com.sirolf2009.javafxterminal.command
 
-import com.sirolf2009.javafxterminal.TerminalView
+import com.sirolf2009.javafxterminal.TerminalCanvas
 import org.eclipse.xtend.lib.annotations.Data
 
 @Data class DeleteText implements Command {
 
 	val int type
 
-	override execute(TerminalView it) {
+	override execute(TerminalCanvas it) {
 		switch (type) {
-			case 0: deleteText(getCaretPosition(), getLength())
-			case 1: deleteText(0, getCaretPosition())
-			case 2: deleteText(0, getLength())
-			case 3: deleteText(0, getLength())
+			case 0:
+				clear(getCurrentColumn(), getLine(getCurrentLine()).length(), getCurrentLine())
+			case 1:
+				clear(0, getCurrentColumn(), getCurrentLine())
+			case 2: {
+				focus(getLines() + 1)
+				moveTo(0, getLines() + 1)
+			}
+			case 3: {
+				clear()
+				moveTo(0, 0)
+			}
 		}
 	}
 

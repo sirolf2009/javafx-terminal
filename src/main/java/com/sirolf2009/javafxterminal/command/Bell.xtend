@@ -1,11 +1,11 @@
 package com.sirolf2009.javafxterminal.command
 
-import com.sirolf2009.javafxterminal.TerminalView
+import com.sirolf2009.javafxterminal.TerminalCanvas
 
 class Bell implements Command {
 	
-	override execute(TerminalView it) {
-		bell()
+	override execute(TerminalCanvas it) {
+//		bell()
 	}
 	
 }

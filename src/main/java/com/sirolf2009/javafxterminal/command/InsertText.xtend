@@ -1,18 +1,18 @@
 package com.sirolf2009.javafxterminal.command
 
-import com.sirolf2009.javafxterminal.TerminalView
+import com.sirolf2009.javafxterminal.TerminalCanvas
 import java.util.List
+import java.util.function.Consumer
+import javafx.scene.canvas.GraphicsContext
 import org.eclipse.xtend.lib.annotations.Data
 
 @Data class InsertText implements Command {
-	
+
 	val String characters
-	val List<String> styles
-	
-	override execute(TerminalView it) {
-		characters.toCharArray().forEach[character|
-			insertChar(character, styles)
-		]
+	val List<Consumer<GraphicsContext>> styles
+
+	override execute(TerminalCanvas it) {
+		insertText(characters, styles)
 	}
-	
+
 }

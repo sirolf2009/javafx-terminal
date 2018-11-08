@@ -1,6 +1,6 @@
 package com.sirolf2009.javafxterminal.command
 
-import com.sirolf2009.javafxterminal.TerminalView
+import com.sirolf2009.javafxterminal.TerminalCanvas
 import org.eclipse.xtend.lib.annotations.Data
 
 @Data class MoveTo implements Command {
@@ -8,7 +8,7 @@ import org.eclipse.xtend.lib.annotations.Data
 	val int x
 	val int y
 
-	override execute(TerminalView it) {
+	override execute(TerminalCanvas it) {
 		moveTo(x - 1, y - 1)
 	}
 

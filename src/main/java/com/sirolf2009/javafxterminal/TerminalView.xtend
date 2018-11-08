@@ -1,5 +1,6 @@
 package com.sirolf2009.javafxterminal
 
+import com.sirolf2009.javafxterminal.command.Bell
 import com.sirolf2009.javafxterminal.command.CarriageReturn
 import com.sirolf2009.javafxterminal.command.ClearLine
 import com.sirolf2009.javafxterminal.command.Command
@@ -13,6 +14,7 @@ import com.sirolf2009.javafxterminal.command.MoveCaretRight
 import com.sirolf2009.javafxterminal.command.MoveCaretUp
 import com.sirolf2009.javafxterminal.command.MoveTo
 import com.sirolf2009.javafxterminal.command.Newline
+import com.sirolf2009.javafxterminal.command.OSCommand
 import com.sun.javafx.tk.Toolkit
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
@@ -28,16 +30,21 @@ import java.util.Set
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiPredicate
+import java.util.function.Consumer
 import javafx.application.Platform
 import javafx.beans.property.SimpleIntegerProperty
+import javafx.scene.canvas.GraphicsContext
 import javafx.scene.text.Font
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.fxmisc.richtext.Caret.CaretVisibility
 import org.fxmisc.richtext.CodeArea
-import com.sirolf2009.javafxterminal.command.Bell
-import com.sirolf2009.javafxterminal.command.OSCommand
+import javafx.scene.text.FontWeight
+import javafx.scene.text.FontPosture
 
-@Accessors class TerminalView extends CodeArea {
+@Accessors class TerminalView extends TerminalCanvas {
+	
+	//TODO ansi support for most useful commands is finished, we should move to vt100 support
+	//http://ascii-table.com/ansi-escape-sequences-vt-100.php
 
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
@@ -55,7 +62,7 @@ import com.sirolf2009.javafxterminal.command.OSCommand
 	// OSC = Operating System Command
 	static val MULTI_OSC = ']'.toCharArray().get(0)
 
-	val styles = new HashSet<String>()
+	val styles = new HashSet<Consumer<GraphicsContext>>()
 
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
@@ -66,8 +73,8 @@ import com.sirolf2009.javafxterminal.command.OSCommand
 	new(Reader reader) {
 		getStyleClass().add("terminal")
 
-		setEditable(false)
-		setShowCaret(CaretVisibility.ON)
+//		setEditable(false)
+//		setShowCaret(CaretVisibility.ON)
 
 		widthProperty().addListener[computeRowCols()]
 		heightProperty().addListener[computeRowCols()]
@@ -89,11 +96,7 @@ import com.sirolf2009.javafxterminal.command.OSCommand
 					} else if(character == ESCAPE) {
 						val next = reader.read()
 						if(next == -1) {
-							val stylesCopy = styles.toList()
-							Platform.runLater [
-								insertChar(character, stylesCopy)
-								getUndoManager().preventMerge()
-							]
+							commands.onNext(new InsertChar(character, styles.toList()))
 						} else if(next == MULTI_CSI) {
 							parseControlSequence(reader)
 						} else if(next == MULTI_OSC) {
@@ -107,7 +110,7 @@ import com.sirolf2009.javafxterminal.command.OSCommand
 					} else if(char >= 32) {
 						commands.onNext(new InsertChar(character, styles.toList()))
 					} else if(char == NEWLINE) {
-						commands.onNext(new Newline(styles.toList()))
+						commands.onNext(new Newline())
 					} else if(char == CARRIAGE_RETURN) {
 						commands.onNext(new CarriageReturn())
 					} else if(char == BACKSPACE) {
@@ -147,13 +150,14 @@ import com.sirolf2009.javafxterminal.command.OSCommand
 							case 0:
 								styles.clear()
 							case 1:
-								styles.add("terminal-bold")
+								styles.add([setFont(Font.font("Monospaced", FontWeight.BOLD, -1))])
 							case 2:
-								styles.add("terminal-faint")
+								styles.add([setFont(Font.font("Monospaced", FontWeight.THIN, -1))])
 							case 3:
-								styles.add("terminal-italic")
-							case 4:
-								styles.add("terminal-underline")
+								styles.add([setFont(Font.font("Monospaced", FontPosture.ITALIC, -1))])
+							case 4: {
+								//TODO underline
+								}
 							case 5: {
 								// TODO slow blink, less than 150 per minute
 							}
