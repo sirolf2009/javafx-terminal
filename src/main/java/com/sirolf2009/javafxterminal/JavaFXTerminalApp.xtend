@@ -1,26 +1,32 @@
 package com.sirolf2009.javafxterminal
 
 import com.sirolf2009.javafxterminal.command.Command
+import com.sirolf2009.javafxterminal.theme.ThemeSolarizedDark
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import java.util.Date
+import javafx.animation.KeyFrame
+import javafx.animation.Timeline
 import javafx.application.Application
 import javafx.scene.Scene
 import javafx.scene.control.ContextMenu
+import javafx.scene.control.Label
 import javafx.scene.control.ListCell
 import javafx.scene.control.ListView
 import javafx.scene.control.MenuItem
+import javafx.scene.control.Tab
+import javafx.scene.control.TabPane
 import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.stage.Stage
 import javafx.stage.StageStyle
-import javafx.scene.paint.Color
+import javafx.util.Duration
 
 class JavaFXTerminalApp extends Application {
 
 	override start(Stage primaryStage) throws Exception {
-		val terminal = new Terminal(#["/usr/bin/fish"]) => [
-			solarizedDark()
+		val terminal = new Terminal(#["/usr/bin/fish"], new ThemeSolarizedDark()) => [
 			HBox.setHgrow(it, Priority.ALWAYS)
 		]
 
@@ -33,30 +39,32 @@ class JavaFXTerminalApp extends Application {
 		terminal.commands.observeOn(JavaFxScheduler.platform()).subscribe [
 			commands.getItems().add(it)
 		]
-		newStage.setScene(new Scene(new HBox(aggregatedCommands, commands)))
-//		newStage.show()
-		val terminalCanvas = new TerminalCanvas()
-		terminalCanvas.setText(0, 0, "Hello World")
-		terminalCanvas.setStyle(3, 0, #[[setStroke(Color.BLUE)]])
-		terminalCanvas.moveTo(11, 0)
-		terminalCanvas.newLine()
-		terminalCanvas.insertText("motherfuckers")
-		terminalCanvas.draw()
-		
-		AnchorPane.setTopAnchor(terminalCanvas, 0d)
-		AnchorPane.setRightAnchor(terminalCanvas, 0d)
-		AnchorPane.setBottomAnchor(terminalCanvas, 0d)
-		AnchorPane.setLeftAnchor(terminalCanvas, 0d)
-		val scene = new Scene(new AnchorPane(terminalCanvas), 1024, 768)
+		val grid = createGrid(terminal)
+		newStage.setScene(new Scene(new TabPane(
+			new Tab("Commands", new HBox(aggregatedCommands, commands)),
+			new Tab("Grid", grid)
+		)))
+		newStage.show()
+		val parent = new AnchorPane(terminal)
+		terminal.widthProperty().bind(parent.widthProperty())
+		terminal.heightProperty().bind(parent.heightProperty())
+		val scene = new Scene(parent, 1024, 768)
 
 		primaryStage.setScene(scene)
 		primaryStage.show()
 
+		terminal.getProcess().setWinSize(terminal.getWinSize())
+
+		new Thread [
+			Thread.sleep(1000)
+			println(terminal.getGridString())
+		].start()
 	}
 
 	def static createCommandListview(Terminal terminal) {
-		new ListView<Command>() => [
-			cellFactory = [
+		new ListView<Command>() => [ list |
+			HBox.setHgrow(list, Priority.ALWAYS)
+			list.cellFactory = [
 				return new ListCell<Command>() {
 
 					override protected updateItem(Command item, boolean empty) {
@@ -75,9 +83,48 @@ class JavaFXTerminalApp extends Application {
 								terminal.commands.onNext(cell.getItem())
 							]
 						])
+						getItems().add(new MenuItem("Show console here") => [
+							onAction = [
+								val newTerminal = new TerminalCanvas(new ThemeSolarizedDark())
+								list.getItems().subList(0, cell.getIndex()).forEach[execute(newTerminal)]
+								val parent = new AnchorPane(newTerminal)
+								newTerminal.widthProperty().bind(parent.widthProperty())
+								newTerminal.heightProperty().bind(parent.heightProperty())
+								val scene = new Scene(parent, 1024, 768)
+								new Stage() => [
+									setScene(scene)
+									show()
+								]
+							]
+						])
 					])
 				]
 			]
+		]
+	}
+
+	def static createGrid(TerminalCanvas canvas) {
+		new GridPane() => [ grid |
+			grid.setGridLinesVisible(true)
+			grid.setHgap(20)
+			grid.setVgap(20)
+			val timeline = new Timeline()
+			timeline.setCycleCount(Timeline.INDEFINITE)
+			val kf = new KeyFrame(Duration.millis(16), [ evt |
+				grid.getChildren().clear()
+				(0 ..< canvas.getGrid().rowMap().values().map[size()].max()).forEach [ x |
+					grid.add(new Label(x + ""), x + 1, 0)
+				]
+				(0 ..< canvas.getGrid().rowKeySet().last()).forEach [ y |
+					grid.add(new Label(y + ""), 0, y + 1)
+				]
+				canvas.getGrid().cellSet().forEach [
+					val character = if(getValue().toString().equals("\n")) "↵" else getValue().toString()
+					grid.add(new Label(character), getColumnKey().intValue() + 1, getRowKey().intValue() + 1)
+				]
+			])
+			timeline.getKeyFrames().add(kf)
+			timeline.play()
 		]
 	}
 

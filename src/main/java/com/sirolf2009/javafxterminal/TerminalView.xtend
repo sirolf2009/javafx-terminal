@@ -15,7 +15,7 @@ import com.sirolf2009.javafxterminal.command.MoveCaretUp
 import com.sirolf2009.javafxterminal.command.MoveTo
 import com.sirolf2009.javafxterminal.command.Newline
 import com.sirolf2009.javafxterminal.command.OSCommand
-import com.sun.javafx.tk.Toolkit
+import com.sirolf2009.javafxterminal.theme.ITheme
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
 import io.reactivex.schedulers.Schedulers
@@ -23,29 +23,25 @@ import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 import java.io.Reader
 import java.util.ArrayList
-import java.util.HashSet
 import java.util.List
 import java.util.Optional
-import java.util.Set
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiPredicate
 import java.util.function.Consumer
-import javafx.application.Platform
 import javafx.beans.property.SimpleIntegerProperty
 import javafx.scene.canvas.GraphicsContext
-import javafx.scene.text.Font
+import javafx.scene.paint.Color
 import org.eclipse.xtend.lib.annotations.Accessors
-import org.fxmisc.richtext.Caret.CaretVisibility
-import org.fxmisc.richtext.CodeArea
-import javafx.scene.text.FontWeight
-import javafx.scene.text.FontPosture
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 @Accessors class TerminalView extends TerminalCanvas {
 	
-	//TODO ansi support for most useful commands is finished, we should move to vt100 support
-	//http://ascii-table.com/ansi-escape-sequences-vt-100.php
+	static val Logger log = LoggerFactory.getLogger(TerminalView)
 
+	// TODO ansi support for most useful commands is finished, we should move to vt100 support
+	// http://ascii-table.com/ansi-escape-sequences-vt-100.php
 	// https://www.w3schools.com/charsets/ref_utf_basic_latin.asp
 	static val BEL = 7 as char
 	static val BACKSPACE = 8 as char
@@ -62,7 +58,7 @@ import javafx.scene.text.FontPosture
 	// OSC = Operating System Command
 	static val MULTI_OSC = ']'.toCharArray().get(0)
 
-	val styles = new HashSet<Consumer<GraphicsContext>>()
+	val styleContext = new RenderingContext()
 
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
@@ -70,15 +66,9 @@ import javafx.scene.text.FontPosture
 	val Subject<Command> commands = PublishSubject.create()
 	val Observable<Command> aggregatedCommands
 
-	new(Reader reader) {
+	new(Reader reader, ITheme theme) {
+		super(theme)
 		getStyleClass().add("terminal")
-
-//		setEditable(false)
-//		setShowCaret(CaretVisibility.ON)
-
-		widthProperty().addListener[computeRowCols()]
-		heightProperty().addListener[computeRowCols()]
-		parentProperty().addListener[computeRowCols()]
 
 		new Thread [
 			val buffer = new StringBuffer()
@@ -96,7 +86,7 @@ import javafx.scene.text.FontPosture
 					} else if(character == ESCAPE) {
 						val next = reader.read()
 						if(next == -1) {
-							commands.onNext(new InsertChar(character, styles.toList()))
+							commands.onNext(new InsertChar(character, getStyles()))
 						} else if(next == MULTI_CSI) {
 							parseControlSequence(reader)
 						} else if(next == MULTI_OSC) {
@@ -104,11 +94,11 @@ import javafx.scene.text.FontPosture
 						} else if(next == BEL) {
 							commands.onNext(new Bell())
 						} else {
-							commands.onNext(new InsertChar(character, styles.toList()))
-							commands.onNext(new InsertChar(next as char, styles.toList()))
+							commands.onNext(new InsertChar(character, getStyles()))
+							commands.onNext(new InsertChar(next as char, getStyles()))
 						}
 					} else if(char >= 32) {
-						commands.onNext(new InsertChar(character, styles.toList()))
+						commands.onNext(new InsertChar(character, getStyles()))
 					} else if(char == NEWLINE) {
 						commands.onNext(new Newline())
 					} else if(char == CARRIAGE_RETURN) {
@@ -116,7 +106,7 @@ import javafx.scene.text.FontPosture
 					} else if(char == BACKSPACE) {
 						commands.onNext(new DeletePreviousChar())
 					} else if(char == HORIZONTAL_TAB) {
-						commands.onNext(new InsertChar(char as char, styles.toList()))
+						commands.onNext(new InsertChar(char as char, getStyles()))
 					} else {
 						System.err.println('''I don't know what to do with char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 					}
@@ -127,10 +117,16 @@ import javafx.scene.text.FontPosture
 			}
 			reader.close()
 		].start()
-
+		
 		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).filter[size() > 0].aggregate()
 		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
-			execute(this)
+			try {
+				println('''executing «it»''')
+				execute(this)
+				println('''done «it»''')
+			} catch(Exception e) {
+				log.error("Failed to execute "+it, e)
+			}
 		]
 	}
 
@@ -141,38 +137,29 @@ import javafx.scene.text.FontPosture
 		while((characterCode = reader.read()) != -1) {
 			character = characterCode as char
 			if(characterCode >= 0x40 && characterCode <= 0x7E) {
-//			if((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z')) {
 				val array = params.toString().split(";").filter[!isEmpty()].toList()
-//				println("Running command " + character + " with params " + array)
 				if(character.toString().equals("m")) {
 					array.map[Integer.parseInt(it)].forEach [
 						switch (it) {
 							case 0:
-								styles.clear()
+								styleContext.clear()
 							case 1:
-								styles.add([setFont(Font.font("Monospaced", FontWeight.BOLD, -1))])
+								styleContext.bold()
 							case 2:
-								styles.add([setFont(Font.font("Monospaced", FontWeight.THIN, -1))])
+								styleContext.thin()
 							case 3:
-								styles.add([setFont(Font.font("Monospaced", FontPosture.ITALIC, -1))])
+								styleContext.italic()
 							case 4: {
-								//TODO underline
-								}
+								// TODO underline
+							}
 							case 5: {
 								// TODO slow blink, less than 150 per minute
 							}
 							case 6: {
 								// TODO fast blink, more than 150 per minute
 							}
-							case 7: {
-								val foreground = styles.findFirst[startsWith("terminal-foreground")]
-								val background = styles.findFirst[startsWith("terminal-background")]
-								styles.removeAll(foreground, background)
-								if(foreground !== null)
-									styles.add(foreground.replace("terminal-foreground", "terminal-background"))
-								if(background !== null)
-									styles.add(background.replace("terminal-background", "terminal-foreground"))
-							}
+							case 7:
+								styleContext.foreground(null).background(null)
 							case 10: {
 								// TODO primary font
 							}
@@ -203,110 +190,157 @@ import javafx.scene.text.FontPosture
 							case 19: {
 								// TODO alternative font
 							}
+							case 24: {
+								// TODO underline off
+							}
 							case 30:
-								styles.setForeground("terminal-foreground-black")
+								styleContext.foreground(theme.foregroundBlack())
 							case 31:
-								styles.setForeground("terminal-foreground-red")
+								styleContext.foreground(theme.foregroundRed())
 							case 32:
-								styles.setForeground("terminal-foreground-green")
+								styleContext.foreground(theme.foregroundGreen())
 							case 33:
-								styles.setForeground("terminal-foreground-yellow")
+								styleContext.foreground(theme.foregroundYellow())
 							case 34:
-								styles.setForeground("terminal-foreground-blue")
+								styleContext.foreground(theme.foregroundBlue())
 							case 35:
-								styles.setForeground("terminal-foreground-magenta")
+								styleContext.foreground(theme.foregroundMagenta())
 							case 36:
-								styles.setForeground("terminal-foreground-cyan")
+								styleContext.foreground(theme.foregroundCyan())
 							case 37:
-								styles.setForeground("terminal-foreground-white")
+								styleContext.foreground(theme.foregroundWhite())
 							case 38: {
 								if(array.get(0).equals("5")) {
 									switch (Integer.parseInt(array.get(1))) {
 										case 0:
-											styles.setForeground("terminal-foreground-black")
+											styleContext.foreground(theme.foregroundBlack())
 										case 1:
-											styles.setForeground("terminal-foreground-red")
+											styleContext.foreground(theme.foregroundRed())
 										case 2:
-											styles.setForeground("terminal-foreground-green")
+											styleContext.foreground(theme.foregroundGreen())
 										case 3:
-											styles.setForeground("terminal-foreground-yellow")
+											styleContext.foreground(theme.foregroundYellow())
 										case 4:
-											styles.setForeground("terminal-foreground-blue")
+											styleContext.foreground(theme.foregroundBlue())
 										case 5:
-											styles.setForeground("terminal-foreground-magenta")
+											styleContext.foreground(theme.foregroundMagenta())
 										case 6:
-											styles.setForeground("terminal-foreground-cyan")
+											styleContext.foreground(theme.foregroundCyan())
 										case 7:
-											styles.setForeground("terminal-foreground-white")
+											styleContext.foreground(theme.foregroundWhite())
 										case 8:
-											styles.setForeground("terminal-foreground-black-bright")
+											styleContext.foreground(theme.foregroundBlackBright())
 										case 9:
-											styles.setForeground("terminal-foreground-red-bright")
+											styleContext.foreground(theme.foregroundRedBright())
 										case 11:
-											styles.setForeground("terminal-foreground-green-bright")
+											styleContext.foreground(theme.foregroundGreenBright())
 										case 12:
-											styles.setForeground("terminal-foreground-yellow-bright")
+											styleContext.foreground(theme.foregroundYellowBright())
 										case 13:
-											styles.setForeground("terminal-foreground-blue-bright")
+											styleContext.foreground(theme.foregroundBlueBright())
 										case 14:
-											styles.setForeground("terminal-foreground-magenta-bright")
+											styleContext.foreground(theme.foregroundMagentaBright())
 										case 15:
-											styles.setForeground("terminal-foreground-cyan-bright")
+											styleContext.foreground(theme.foregroundCyanBright())
 										case 16:
-											styles.setForeground("terminal-foreground-white-bright")
+											styleContext.foreground(theme.foregroundWhiteBright())
 									}
+								} else if(array.get(0).equals("2")) {
+									styleContext.foreground(Color.rgb(Integer.parseInt(array.get(1)), Integer.parseInt(array.get(2)), Integer.parseInt(array.get(3))))
 								}
 							}
 							case 39:
-								styles.removeAll(styles.filter[startsWith("terminal-foreground")].toList())
-							case 40:
-								styles.setBackground("terminal-background-black")
+								styleContext.foreground(null)
+							case 40: 
+								styleContext.background(theme.backgroundBlack())
 							case 41:
-								styles.setBackground("terminal-background-red")
+								styleContext.background(theme.backgroundRed())
 							case 42:
-								styles.setBackground("terminal-background-green")
+								styleContext.background(theme.backgroundGreen())
 							case 43:
-								styles.setBackground("terminal-background-yellow")
+								styleContext.background(theme.backgroundYellow())
 							case 44:
-								styles.setBackground("terminal-background-blue")
+								styleContext.background(theme.backgroundBlue())
 							case 45:
-								styles.setBackground("terminal-background-magenta")
+								styleContext.background(theme.backgroundMagenta())
 							case 46:
-								styles.setBackground("terminal-background-cyan")
+								styleContext.background(theme.backgroundCyan())
 							case 47:
-								styles.setBackground("terminal-background-white")
+								styleContext.background(theme.backgroundWhite())
+								case 48: {
+								if(array.get(0).equals("5")) {
+									switch (Integer.parseInt(array.get(1))) {
+										case 0:
+											styleContext.background(theme.backgroundBlack())
+										case 1:
+											styleContext.background(theme.backgroundRed())
+										case 2:
+											styleContext.background(theme.backgroundGreen())
+										case 3:
+											styleContext.background(theme.backgroundYellow())
+										case 4:
+											styleContext.background(theme.backgroundBlue())
+										case 5:
+											styleContext.background(theme.backgroundMagenta())
+										case 6:
+											styleContext.background(theme.backgroundCyan())
+										case 7:
+											styleContext.background(theme.backgroundWhite())
+										case 8:
+											styleContext.background(theme.backgroundBlackBright())
+										case 9:
+											styleContext.background(theme.backgroundRedBright())
+										case 11:
+											styleContext.background(theme.backgroundGreenBright())
+										case 12:
+											styleContext.background(theme.backgroundYellowBright())
+										case 13:
+											styleContext.background(theme.backgroundBlueBright())
+										case 14:
+											styleContext.background(theme.backgroundMagentaBright())
+										case 15:
+											styleContext.background(theme.backgroundCyanBright())
+										case 16:
+											styleContext.background(theme.backgroundWhiteBright())
+									}
+								} else if(array.get(0).equals("2")) {
+									styleContext.background(Color.rgb(Integer.parseInt(array.get(1)), Integer.parseInt(array.get(2)), Integer.parseInt(array.get(3))))
+								}
+							}
+							case 49:
+								styleContext.background(null)
 							case 90:
-								styles.setForeground("terminal-foreground-black-bright")
+								styleContext.foreground(theme.foregroundBlackBright())
 							case 91:
-								styles.setForeground("terminal-foreground-red-bright")
+								styleContext.foreground(theme.foregroundRedBright())
 							case 92:
-								styles.setForeground("terminal-foreground-green-bright")
+								styleContext.foreground(theme.foregroundGreenBright())
 							case 93:
-								styles.setForeground("terminal-foreground-yellow-bright")
+								styleContext.foreground(theme.foregroundYellowBright())
 							case 94:
-								styles.setForeground("terminal-foreground-blue-bright")
+								styleContext.foreground(theme.foregroundBlueBright())
 							case 95:
-								styles.setForeground("terminal-foreground-magenta-bright")
+								styleContext.foreground(theme.foregroundMagentaBright())
 							case 96:
-								styles.setForeground("terminal-foreground-cyan-bright")
+								styleContext.foreground(theme.foregroundCyanBright())
 							case 97:
-								styles.setForeground("terminal-foreground-white-bright")
+								styleContext.foreground(theme.foregroundWhiteBright())
 							case 100:
-								styles.setForeground("terminal-background-black-bright")
+								styleContext.background(theme.backgroundBlackBright())
 							case 101:
-								styles.setForeground("terminal-background-red-bright")
+								styleContext.background(theme.backgroundRedBright())
 							case 102:
-								styles.setForeground("terminal-background-green-bright")
+								styleContext.background(theme.backgroundGreenBright())
 							case 103:
-								styles.setForeground("terminal-background-yellow-bright")
+								styleContext.background(theme.backgroundYellowBright())
 							case 104:
-								styles.setForeground("terminal-background-blue-bright")
+								styleContext.background(theme.backgroundBlueBright())
 							case 105:
-								styles.setForeground("terminal-background-magenta-bright")
+								styleContext.background(theme.backgroundMagentaBright())
 							case 106:
-								styles.setForeground("terminal-background-cyan-bright")
+								styleContext.background(theme.backgroundCyanBright())
 							case 107:
-								styles.setForeground("terminal-background-white-bright")
+								styleContext.background(theme.backgroundWhiteBright())
 							default:
 								throw new RuntimeException("Unknown style " + it + " with params " + params)
 						}
@@ -355,104 +389,8 @@ import javafx.scene.text.FontPosture
 		}
 	}
 
-	def solarizedDark() {
-		getStylesheets().add(TerminalView.getResource("/solarized_dark.css").toExternalForm())
-	}
-	
-	def void bell() {
-	}
-	
-	def void osCommand(List<String> params) {
-	}
-
-	def static setForeground(Set<String> classes, String foreground) {
-		classes.removeAll(classes.filter[startsWith("terminal-foreground")].toList())
-		classes.add(foreground)
-	}
-
-	def static setBackground(Set<String> classes, String background) {
-		classes.removeAll(classes.filter[startsWith("terminal-background")].toList())
-		classes.add(background)
-	}
-
-	def moveCaretLeft(int amount) {
-		(0 ..< amount).forEach [
-			moveCaretLeft()
-		]
-	}
-
-	def moveCaretLeft() {
-		if(getCaretColumn() > 0) {
-			moveTo(getCaretPosition() - 1)
-		}
-	}
-
-	def moveCaretRight(int amount) {
-		(0 ..< amount).forEach [
-			moveCaretRight()
-		]
-	}
-
-	def moveCaretRight() {
-		val caretPosition = getCaretPosition()
-		val length = getLength()
-		val columns = columns.get()
-		try {
-			if(caretPosition > length) {
-				insertChar(' ', #[])
-				moveTo(getCaretPosition() + 1)
-			} else {
-				moveTo(getCaretPosition() + 1)
-			}
-		} catch(Exception e) {
-			e.printStackTrace()
-			throw new RuntimeException('''Failed to move the caret right with caretPosition=«caretPosition» and length=«length» and columns=«columns»''', e)
-		}
-	}
-
-	def moveCaretUp(int amount) {
-		val currentLineDistance = getCaretColumn()
-		val targetLineDistance = getParagraph(getCurrentParagraph() - amount).getText().length() - getCaretColumn()
-		val inbetweenLinesDistance = (0 ..< amount - 1).map[getParagraph(getCurrentParagraph() - it)].map[getText().length()].reduce[a, b|a + b]
-		moveCaretLeft(currentLineDistance + targetLineDistance + inbetweenLinesDistance)
-	}
-
-	def moveCaretDown(int amount) {
-		val currentLineDistance = getParagraph(getCurrentParagraph()).getText().length() - getCaretColumn()
-		val targetLineDistance = getCaretColumn()
-		val inbetweenLinesDistance = (0 ..< amount - 1).map[getParagraph(getCurrentParagraph() + it)].map[getText().length()].reduce[a, b|a + b]
-		moveCaretRight(currentLineDistance + targetLineDistance + inbetweenLinesDistance)
-	}
-
-	def insertChar(Character character, List<String> styles) {
-		val caretPosition = getCaretPosition()
-		val length = getLength()
-		try {
-			if(caretPosition >= length) {
-				insertText(length, character.toString())
-			} else {
-				replaceText(getCaretPosition(), getCaretPosition() + 1, character.toString())
-			}
-			setStyle(getCaretPosition() - 1, getCaretPosition(), styles.toList())
-			requestFollowCaret()
-		} catch(Exception e) {
-			throw new RuntimeException('''Failed to insert char «(character as char) as int»: «character» with styles «styles» and caretPosition=«caretPosition» and length=«length»''', e)
-		}
-	}
-
-	def clearLine() {
-		replaceText(getCurrentParagraph(), getCaretColumn(), getCurrentParagraph(), getParagraph(getCurrentParagraph()).length(), "")
-	}
-
-	def computeRowCols() {
-		if(getWidth() != 0 && getHeight() != 0) {
-			val font = Font.font("Monospaced")
-			val metrics = Toolkit.getToolkit().getFontLoader().getFontMetrics(font)
-			val charWidth = metrics.computeStringWidth("a")
-			val charHeight = metrics.getLineHeight()
-			columns.set(Math.floor(getWidth() / charWidth) as int)
-			rows.set(Math.floor(getHeight() / charHeight) as int)
-		}
+	def List<Consumer<GraphicsContext>> getStyles() {
+		return #[styleContext.copy()]
 	}
 
 	def static aggregate(Observable<List<Command>> obs) {

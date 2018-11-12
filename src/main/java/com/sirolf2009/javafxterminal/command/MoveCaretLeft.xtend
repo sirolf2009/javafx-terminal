@@ -7,7 +7,7 @@ import org.eclipse.xtend.lib.annotations.Data
 	
 	val int amount
 
-	override execute(TerminalCanvas it) {
+	override execute(TerminalCanvas it) { 
 		moveCaretLeft(amount)
 	}
 

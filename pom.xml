@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.sirolf2009</groupId>
 	<artifactId>javafx-terminal</artifactId>
@@ -55,6 +56,14 @@
 			<id>bintray-jetbrains-pty4j</id>
 			<name>bintray</name>
 			<url>https://jetbrains.bintray.com/pty4j</url>
+		</repository>
+		<repository>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>bintray-oehme-maven</id>
+			<name>bintray</name>
+			<url>https://dl.bintray.com/oehme/maven</url>
 		</repository>
 	</repositories>
 	<pluginRepositories>
@@ -138,6 +147,16 @@
 			<groupId>io.reactivex.rxjava2</groupId>
 			<artifactId>rxjavafx</artifactId>
 			<version>2.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.oehme.xtend</groupId>
+			<artifactId>xtend-contrib</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.8.0-beta2</version>
 		</dependency>
 	</dependencies>
 

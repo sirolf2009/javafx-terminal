@@ -1,8 +1,7 @@
 package com.sirolf2009.javafxterminal
 
 import com.pty4j.PtyProcess
-import com.pty4j.WinSize
-import com.sun.javafx.tk.Toolkit
+import com.sirolf2009.javafxterminal.theme.ITheme
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -12,7 +11,6 @@ import java.util.List
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
-import javafx.scene.text.Font
 import org.eclipse.xtend.lib.annotations.Accessors
 
 /**
@@ -33,17 +31,16 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	val PtyProcess process
 	val PrintWriter writer
 
-	new(List<String> command) throws IOException {
-		this(PtyProcess.exec(command, #{"TERM" -> "xterm-256color", "COLORTERM" -> "truecolor", "GDM_LANG" -> "en-US.UTF-8", "LANG" -> "en_US.UTF-8"}))
+	new(List<String> command, ITheme theme) throws IOException {
+		this(PtyProcess.exec(command, #{"TERM" -> "xterm-256color", "COLORTERM" -> "truecolor", "GDM_LANG" -> "en-US.UTF-8", "LANG" -> "en_US.UTF-8"}), theme)
 	}
 
-	new(PtyProcess process) {
-		super(new BufferedReader(new InputStreamReader(process.getInputStream())))
+	new(PtyProcess process, ITheme theme) {
+		super(new BufferedReader(new InputStreamReader(process.getInputStream())), theme)
 		new Thread[
 			new BufferedReader(new InputStreamReader(process.getErrorStream())).lines().forEach[System.err.println(it)]
 		].start()
 		this.process = process
-		setEditable(true)
 		writer = new PrintWriter(new OutputStreamWriter(process.getOutputStream()))
 		addEventFilter(KeyEvent.ANY) [
 			if(getEventType() == KeyEvent.KEY_RELEASED) {
@@ -67,20 +64,9 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			}
 			consume()
 		]
-		widthProperty().addListener[computeWinSize()]
-		heightProperty().addListener[computeWinSize()]
-		parentProperty().addListener[computeWinSize()]
-		setWrapText(true)
-	}
-
-	def computeWinSize() {
-		if(getWidth() != 0 && getHeight() != 0) {
-			val font = Font.font("Monospaced")
-			val metrics = Toolkit.getToolkit().getFontLoader().getFontMetrics(font)
-			val charWidth = metrics.computeStringWidth("a")
-			val charHeight = metrics.getLineHeight()
-			process.setWinSize(new WinSize(Math.floor(getWidth() / charWidth) as int, Math.floor(getHeight() / charHeight) as int))
-		}
+		widthProperty().addListener[process.setWinSize(getWinSize())]
+		heightProperty().addListener[process.setWinSize(getWinSize())]
+		parentProperty().addListener[process.setWinSize(getWinSize())]
 	}
 
 	def synchronized command(String command) {
