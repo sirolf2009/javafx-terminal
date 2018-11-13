@@ -37,40 +37,43 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 		}
 	}
 
+	@Deprecated
 	def copy() {
 		return new RenderingContext(this)
 	}
 
-	def void clear() {
-		fontWeight = null
-		fontPosture = null
-		background = null
-		foreground = null
+	def RenderingContext clear() {
+		return new RenderingContext()
 	}
 
 	def RenderingContext bold() {
-		fontWeight = FontWeight.BOLD
-		return this
+		val ctx = new RenderingContext(this)
+		ctx.fontWeight = FontWeight.BOLD
+		return ctx
 	}
 
 	def RenderingContext thin() {
-		fontWeight = FontWeight.THIN
-		return this
+		val ctx = new RenderingContext(this)
+		ctx.fontWeight = FontWeight.THIN
+		return ctx
 	}
 
 	def RenderingContext italic() {
-		fontPosture = FontPosture.ITALIC
-		return this
+		val ctx = new RenderingContext(this)
+		ctx.fontPosture = FontPosture.ITALIC
+		return ctx
 	}
 
 	def RenderingContext background(Color color) {
-		background = color
-		return this
+		val ctx = new RenderingContext(this)
+		ctx.background = color
+		return ctx
 	}
 
 	def RenderingContext foreground(Color color) {
-		foreground = color
-		return this
+		val ctx = new RenderingContext(this)
+		ctx.foreground = color
+		return ctx
 	}
 
 	override toString() {

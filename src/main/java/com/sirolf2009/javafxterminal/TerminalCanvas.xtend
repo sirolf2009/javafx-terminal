@@ -51,8 +51,10 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		charHeight = metrics.getLineHeight()
 		anchor = new SimpleObjectProperty(this, "anchor")
 		caret = new SimpleObjectProperty(this, "caret", new Point2D(0, 0))
-
-		val timeline = new Timeline()
+	}
+	
+	def void drawTimeline() {
+		val timeline = new Timeline(60)
 		timeline.setCycleCount(Timeline.INDEFINITE)
 		val kf = new KeyFrame(Duration.millis(16), [ evt |
 			draw()
@@ -73,6 +75,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			val lines = grid.rowKeySet().last()
 			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[drawLine(it)]
 		}
+		drawCursor()
 		restore()
 	}
 
@@ -87,6 +90,15 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			]
 			strokeText(char.toString(), x.columnToScreen(), y.rowToScreen())
 		]
+		restore()
+	}
+	
+	def void drawCursor() {
+		extension val g = getGraphicsContext2D()
+		save()
+		setFill(Color.gray(0.5, System.currentTimeMillis() % 1000 / 500))
+		val pos = caret.get()
+		fillText("█", pos.getX().intValue().columnToScreen(), pos.getY().intValue().rowToScreen())
 		restore()
 	}
 
@@ -147,6 +159,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	def void deletePreviousChar() {
 		val caret = caret.getValue()
 		clear(caret.getX().intValue() - 1, caret.getY().intValue())
+		moveCaretLeft()
 	}
 
 	def getCurrentLine() {
@@ -184,7 +197,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			return "< EMPTY >"
 		}
 		val width = grid.rowMap().values().map[size()].max()
-		val height = grid.rowKeySet().last()
+		val height = getLineCount()
 		val charsPerColumn = Math.max(width.toString().length(), height.toString().length()) + 1
 		val addPadding = [ String string |
 			val padding = (0 ..< charsPerColumn - string.length()).map[" "].join()
@@ -230,9 +243,8 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		if(x < 0) {
 			throw new IllegalArgumentException('''Cannot set text «text» at negative indeces («x», «y»)''')
 		} else if(x+text.length() > getWinWidth()) {
-			throw new IllegalArgumentException('''Cannot set text «text» outside the screen («x», «y»)''')
+			throw new IllegalArgumentException('''Cannot set text «text» @ («x», «y»)-(«x+text.length()», «y») outside the screen width «getWinWidth()»''')
 		}
-		println('''(«x», «y») «text»''')
 		text.toCharArray().forEach [ it, index |
 			grid.put(y, x + index, it)
 		]
@@ -248,25 +260,18 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void clearLine() {
-		println('''clearLine()''')
 		clearLine(caret.getValue().getY().intValue())
 	}
 
 	def void clearLine(int y) {
-		println('''clearLine(«y») -> «grid.row(y).keySet().sort()»''')
 		grid.row(y).keySet().sort().toList().forEach[x|clear(x, y)]
 	}
 
 	def void clear(int xFrom, int xTo, int y) {
-		println('''clear(«xFrom»-«xTo», «y»)''')
 		(xFrom ..< xTo).forEach[x|clear(x, y)]
 	}
 
 	def void clear(int x, int y) {
-		println('''(«x», «y») clear''')
-		if(x == 27 && grid.get(y, x).toString().equals("r")) {
-			println('''(«x», «y») clear''')
-		}
 		grid.remove(y, x)
 	}
 
@@ -284,6 +289,10 @@ import org.eclipse.xtend.lib.annotations.Accessors
 
 	def columnToScreen(int column) {
 		return column * charWidth
+	}
+	
+	def getLineCount() {
+		grid.rowKeySet().last() + 1
 	}
 
 	def getWinSize() {

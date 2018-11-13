@@ -15,6 +15,7 @@ import com.sirolf2009.javafxterminal.command.MoveCaretUp
 import com.sirolf2009.javafxterminal.command.MoveTo
 import com.sirolf2009.javafxterminal.command.Newline
 import com.sirolf2009.javafxterminal.command.OSCommand
+import com.sirolf2009.javafxterminal.command.SelectCharacterSet
 import com.sirolf2009.javafxterminal.theme.ITheme
 import io.reactivex.Observable
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler
@@ -23,6 +24,7 @@ import io.reactivex.subjects.PublishSubject
 import io.reactivex.subjects.Subject
 import java.io.Reader
 import java.util.ArrayList
+import java.util.LinkedList
 import java.util.List
 import java.util.Optional
 import java.util.concurrent.TimeUnit
@@ -37,7 +39,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 @Accessors class TerminalView extends TerminalCanvas {
-	
+
 	static val Logger log = LoggerFactory.getLogger(TerminalView)
 
 	// TODO ansi support for most useful commands is finished, we should move to vt100 support
@@ -49,6 +51,8 @@ import org.slf4j.LoggerFactory
 	static val NEWLINE = 10 as char
 	static val CARRIAGE_RETURN = 13 as char
 	static val ESCAPE = 27 as char
+	static val LEFT_PAR = 40 as char
+	static val RIGHT_PAR = 41 as char
 
 	// http://ascii-table.com/ansi-escape-sequences.php
 	// CSI = Control Sequence Introducer
@@ -58,11 +62,12 @@ import org.slf4j.LoggerFactory
 	// OSC = Operating System Command
 	static val MULTI_OSC = ']'.toCharArray().get(0)
 
-	val styleContext = new RenderingContext()
+	var RenderingContext styleContext = new RenderingContext()
 
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
 
+	val Subject<Character> characters = PublishSubject.create()
 	val Subject<Command> commands = PublishSubject.create()
 	val Observable<Command> aggregatedCommands
 
@@ -74,7 +79,8 @@ import org.slf4j.LoggerFactory
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-//				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
+				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
+				characters.onNext(char as char)
 				try {
 					buffer.append(char as char)
 					val character = char as char
@@ -93,6 +99,10 @@ import org.slf4j.LoggerFactory
 							parseOperatingSystemCommand(reader)
 						} else if(next == BEL) {
 							commands.onNext(new Bell())
+						} else if(next == LEFT_PAR) {
+							parseSelectCharacterSetG0(reader)
+						} else if(next == RIGHT_PAR) {
+							parseSelectCharacterSetG1(reader)
 						} else {
 							commands.onNext(new InsertChar(character, getStyles()))
 							commands.onNext(new InsertChar(next as char, getStyles()))
@@ -117,19 +127,19 @@ import org.slf4j.LoggerFactory
 			}
 			reader.close()
 		].start()
-		
+
 		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).filter[size() > 0].aggregate()
 		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
 			try {
-				println('''executing «it»''')
 				execute(this)
-				println('''done «it»''')
 			} catch(Exception e) {
-				log.error("Failed to execute "+it, e)
+				log.error("Failed to execute " + it, e)
 			}
 		]
 	}
 
+	// https://github.com/JetBrains/jediterm/blob/master/terminal/src/com/jediterm/terminal/emulator/JediEmulator.java
+	// https://github.com/JetBrains/jediterm/blob/master/terminal/src/com/jediterm/terminal/model/JediTerminal.java
 	def parseControlSequence(Reader reader) {
 		val params = new StringBuilder()
 		var int characterCode
@@ -137,18 +147,19 @@ import org.slf4j.LoggerFactory
 		while((characterCode = reader.read()) != -1) {
 			character = characterCode as char
 			if(characterCode >= 0x40 && characterCode <= 0x7E) {
-				val array = params.toString().split(";").filter[!isEmpty()].toList()
+				val array = new LinkedList(params.toString().split(";").filter[!isEmpty()].toList())
 				if(character.toString().equals("m")) {
-					array.map[Integer.parseInt(it)].forEach [
+					while(array.peek() !== null) {
+						val it = Integer.parseInt(array.poll())
 						switch (it) {
 							case 0:
-								styleContext.clear()
+								styleContext = styleContext.clear()
 							case 1:
-								styleContext.bold()
+								styleContext = styleContext.bold()
 							case 2:
-								styleContext.thin()
+								styleContext = styleContext.thin()
 							case 3:
-								styleContext.italic()
+								styleContext = styleContext.italic()
 							case 4: {
 								// TODO underline
 							}
@@ -159,7 +170,7 @@ import org.slf4j.LoggerFactory
 								// TODO fast blink, more than 150 per minute
 							}
 							case 7:
-								styleContext.foreground(null).background(null)
+								styleContext = styleContext.foreground(null).background(null)
 							case 10: {
 								// TODO primary font
 							}
@@ -194,157 +205,161 @@ import org.slf4j.LoggerFactory
 								// TODO underline off
 							}
 							case 30:
-								styleContext.foreground(theme.foregroundBlack())
+								styleContext = styleContext.foreground(theme.foregroundBlack())
 							case 31:
-								styleContext.foreground(theme.foregroundRed())
+								styleContext = styleContext.foreground(theme.foregroundRed())
 							case 32:
-								styleContext.foreground(theme.foregroundGreen())
+								styleContext = styleContext.foreground(theme.foregroundGreen())
 							case 33:
-								styleContext.foreground(theme.foregroundYellow())
+								styleContext = styleContext.foreground(theme.foregroundYellow())
 							case 34:
-								styleContext.foreground(theme.foregroundBlue())
+								styleContext = styleContext.foreground(theme.foregroundBlue())
 							case 35:
-								styleContext.foreground(theme.foregroundMagenta())
+								styleContext = styleContext.foreground(theme.foregroundMagenta())
 							case 36:
-								styleContext.foreground(theme.foregroundCyan())
+								styleContext = styleContext.foreground(theme.foregroundCyan())
 							case 37:
-								styleContext.foreground(theme.foregroundWhite())
+								styleContext = styleContext.foreground(theme.foregroundWhite())
 							case 38: {
-								if(array.get(0).equals("5")) {
-									switch (Integer.parseInt(array.get(1))) {
-										case 0:
-											styleContext.foreground(theme.foregroundBlack())
-										case 1:
-											styleContext.foreground(theme.foregroundRed())
-										case 2:
-											styleContext.foreground(theme.foregroundGreen())
-										case 3:
-											styleContext.foreground(theme.foregroundYellow())
-										case 4:
-											styleContext.foreground(theme.foregroundBlue())
-										case 5:
-											styleContext.foreground(theme.foregroundMagenta())
-										case 6:
-											styleContext.foreground(theme.foregroundCyan())
-										case 7:
-											styleContext.foreground(theme.foregroundWhite())
-										case 8:
-											styleContext.foreground(theme.foregroundBlackBright())
-										case 9:
-											styleContext.foreground(theme.foregroundRedBright())
-										case 11:
-											styleContext.foreground(theme.foregroundGreenBright())
-										case 12:
-											styleContext.foreground(theme.foregroundYellowBright())
-										case 13:
-											styleContext.foreground(theme.foregroundBlueBright())
-										case 14:
-											styleContext.foreground(theme.foregroundMagentaBright())
-										case 15:
-											styleContext.foreground(theme.foregroundCyanBright())
-										case 16:
-											styleContext.foreground(theme.foregroundWhiteBright())
+								switch (Integer.parseInt(array.poll())) {
+									case 2:
+										styleContext = styleContext.foreground(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
+									case 5: {
+										switch (Integer.parseInt(array.poll())) {
+											case 0:
+												styleContext = styleContext.foreground(theme.foregroundBlack())
+											case 1:
+												styleContext = styleContext.foreground(theme.foregroundRed())
+											case 2:
+												styleContext = styleContext.foreground(theme.foregroundGreen())
+											case 3:
+												styleContext = styleContext.foreground(theme.foregroundYellow())
+											case 4:
+												styleContext = styleContext.foreground(theme.foregroundBlue())
+											case 5:
+												styleContext = styleContext.foreground(theme.foregroundMagenta())
+											case 6:
+												styleContext = styleContext.foreground(theme.foregroundCyan())
+											case 7:
+												styleContext = styleContext.foreground(theme.foregroundWhite())
+											case 8:
+												styleContext = styleContext.foreground(theme.foregroundBlackBright())
+											case 9:
+												styleContext = styleContext.foreground(theme.foregroundRedBright())
+											case 11:
+												styleContext = styleContext.foreground(theme.foregroundGreenBright())
+											case 12:
+												styleContext = styleContext.foreground(theme.foregroundYellowBright())
+											case 13:
+												styleContext = styleContext.foreground(theme.foregroundBlueBright())
+											case 14:
+												styleContext = styleContext.foreground(theme.foregroundMagentaBright())
+											case 15:
+												styleContext = styleContext.foreground(theme.foregroundCyanBright())
+											case 16:
+												styleContext = styleContext.foreground(theme.foregroundWhiteBright())
+										}
 									}
-								} else if(array.get(0).equals("2")) {
-									styleContext.foreground(Color.rgb(Integer.parseInt(array.get(1)), Integer.parseInt(array.get(2)), Integer.parseInt(array.get(3))))
 								}
 							}
 							case 39:
-								styleContext.foreground(null)
-							case 40: 
-								styleContext.background(theme.backgroundBlack())
+								styleContext = styleContext.foreground(null)
+							case 40:
+								styleContext = styleContext.background(theme.backgroundBlack())
 							case 41:
-								styleContext.background(theme.backgroundRed())
+								styleContext = styleContext.background(theme.backgroundRed())
 							case 42:
-								styleContext.background(theme.backgroundGreen())
+								styleContext = styleContext.background(theme.backgroundGreen())
 							case 43:
-								styleContext.background(theme.backgroundYellow())
+								styleContext = styleContext.background(theme.backgroundYellow())
 							case 44:
-								styleContext.background(theme.backgroundBlue())
+								styleContext = styleContext.background(theme.backgroundBlue())
 							case 45:
-								styleContext.background(theme.backgroundMagenta())
+								styleContext = styleContext.background(theme.backgroundMagenta())
 							case 46:
-								styleContext.background(theme.backgroundCyan())
+								styleContext = styleContext.background(theme.backgroundCyan())
 							case 47:
-								styleContext.background(theme.backgroundWhite())
-								case 48: {
-								if(array.get(0).equals("5")) {
-									switch (Integer.parseInt(array.get(1))) {
-										case 0:
-											styleContext.background(theme.backgroundBlack())
-										case 1:
-											styleContext.background(theme.backgroundRed())
-										case 2:
-											styleContext.background(theme.backgroundGreen())
-										case 3:
-											styleContext.background(theme.backgroundYellow())
-										case 4:
-											styleContext.background(theme.backgroundBlue())
-										case 5:
-											styleContext.background(theme.backgroundMagenta())
-										case 6:
-											styleContext.background(theme.backgroundCyan())
-										case 7:
-											styleContext.background(theme.backgroundWhite())
-										case 8:
-											styleContext.background(theme.backgroundBlackBright())
-										case 9:
-											styleContext.background(theme.backgroundRedBright())
-										case 11:
-											styleContext.background(theme.backgroundGreenBright())
-										case 12:
-											styleContext.background(theme.backgroundYellowBright())
-										case 13:
-											styleContext.background(theme.backgroundBlueBright())
-										case 14:
-											styleContext.background(theme.backgroundMagentaBright())
-										case 15:
-											styleContext.background(theme.backgroundCyanBright())
-										case 16:
-											styleContext.background(theme.backgroundWhiteBright())
+								styleContext = styleContext.background(theme.backgroundWhite())
+							case 48: {
+								switch (Integer.parseInt(array.poll())) {
+									case 2:
+										styleContext = styleContext.background(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
+									case 5: {
+										switch (Integer.parseInt(array.poll())) {
+											case 0:
+												styleContext = styleContext.background(theme.backgroundBlack())
+											case 1:
+												styleContext = styleContext.background(theme.backgroundRed())
+											case 2:
+												styleContext = styleContext.background(theme.backgroundGreen())
+											case 3:
+												styleContext = styleContext.background(theme.backgroundYellow())
+											case 4:
+												styleContext = styleContext.background(theme.backgroundBlue())
+											case 5:
+												styleContext = styleContext.background(theme.backgroundMagenta())
+											case 6:
+												styleContext = styleContext.background(theme.backgroundCyan())
+											case 7:
+												styleContext = styleContext.background(theme.backgroundWhite())
+											case 8:
+												styleContext = styleContext.background(theme.backgroundBlackBright())
+											case 9:
+												styleContext = styleContext.background(theme.backgroundRedBright())
+											case 11:
+												styleContext = styleContext.background(theme.backgroundGreenBright())
+											case 12:
+												styleContext = styleContext.background(theme.backgroundYellowBright())
+											case 13:
+												styleContext = styleContext.background(theme.backgroundBlueBright())
+											case 14:
+												styleContext = styleContext.background(theme.backgroundMagentaBright())
+											case 15:
+												styleContext = styleContext.background(theme.backgroundCyanBright())
+											case 16:
+												styleContext = styleContext.background(theme.backgroundWhiteBright())
+										}
 									}
-								} else if(array.get(0).equals("2")) {
-									styleContext.background(Color.rgb(Integer.parseInt(array.get(1)), Integer.parseInt(array.get(2)), Integer.parseInt(array.get(3))))
 								}
 							}
 							case 49:
-								styleContext.background(null)
+								styleContext = styleContext.background(null)
 							case 90:
-								styleContext.foreground(theme.foregroundBlackBright())
+								styleContext = styleContext.foreground(theme.foregroundBlackBright())
 							case 91:
-								styleContext.foreground(theme.foregroundRedBright())
+								styleContext = styleContext.foreground(theme.foregroundRedBright())
 							case 92:
-								styleContext.foreground(theme.foregroundGreenBright())
+								styleContext = styleContext.foreground(theme.foregroundGreenBright())
 							case 93:
-								styleContext.foreground(theme.foregroundYellowBright())
+								styleContext = styleContext.foreground(theme.foregroundYellowBright())
 							case 94:
-								styleContext.foreground(theme.foregroundBlueBright())
+								styleContext = styleContext.foreground(theme.foregroundBlueBright())
 							case 95:
-								styleContext.foreground(theme.foregroundMagentaBright())
+								styleContext = styleContext.foreground(theme.foregroundMagentaBright())
 							case 96:
-								styleContext.foreground(theme.foregroundCyanBright())
+								styleContext = styleContext.foreground(theme.foregroundCyanBright())
 							case 97:
-								styleContext.foreground(theme.foregroundWhiteBright())
+								styleContext = styleContext.foreground(theme.foregroundWhiteBright())
 							case 100:
-								styleContext.background(theme.backgroundBlackBright())
+								styleContext = styleContext.background(theme.backgroundBlackBright())
 							case 101:
-								styleContext.background(theme.backgroundRedBright())
+								styleContext = styleContext.background(theme.backgroundRedBright())
 							case 102:
-								styleContext.background(theme.backgroundGreenBright())
+								styleContext = styleContext.background(theme.backgroundGreenBright())
 							case 103:
-								styleContext.background(theme.backgroundYellowBright())
+								styleContext = styleContext.background(theme.backgroundYellowBright())
 							case 104:
-								styleContext.background(theme.backgroundBlueBright())
+								styleContext = styleContext.background(theme.backgroundBlueBright())
 							case 105:
-								styleContext.background(theme.backgroundMagentaBright())
+								styleContext = styleContext.background(theme.backgroundMagentaBright())
 							case 106:
-								styleContext.background(theme.backgroundCyanBright())
+								styleContext = styleContext.background(theme.backgroundCyanBright())
 							case 107:
-								styleContext.background(theme.backgroundWhiteBright())
+								styleContext = styleContext.background(theme.backgroundWhiteBright())
 							default:
 								throw new RuntimeException("Unknown style " + it + " with params " + params)
 						}
-					]
+					}
 				} else if(character.toString().equals("A")) {
 					commands.onNext(new MoveCaretUp(1))
 				} else if(character.toString().equals("B")) {
@@ -356,7 +371,8 @@ import org.slf4j.LoggerFactory
 					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
 					commands.onNext(new MoveCaretLeft(amount))
 				} else if(character.toString().equals("K")) {
-					commands.onNext(new ClearLine())
+					val mode = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
+					commands.onNext(new ClearLine(mode))
 				} else if(character.toString().equals("H")) {
 					val x = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
 					val y = if(array.size() > 1) Integer.parseInt(array.get(1)) else 1
@@ -389,8 +405,16 @@ import org.slf4j.LoggerFactory
 		}
 	}
 
+	def parseSelectCharacterSetG0(Reader reader) {
+		commands.onNext(new SelectCharacterSet(true, reader.read() as char))
+	}
+
+	def parseSelectCharacterSetG1(Reader reader) {
+		commands.onNext(new SelectCharacterSet(false, reader.read() as char))
+	}
+
 	def List<Consumer<GraphicsContext>> getStyles() {
-		return #[styleContext.copy()]
+		return #[new RenderingContext(styleContext)]
 	}
 
 	def static aggregate(Observable<List<Command>> obs) {
