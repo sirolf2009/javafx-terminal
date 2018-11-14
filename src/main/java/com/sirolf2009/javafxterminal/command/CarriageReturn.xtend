@@ -6,7 +6,7 @@ import org.eclipse.xtend.lib.annotations.Data
 @Data class CarriageReturn implements Command {
 
 	override execute(TerminalCanvas it) {
-		moveTo(getCurrentLine(), 0)
+		moveTo(0, getCurrentLine())
 	}
 
 }

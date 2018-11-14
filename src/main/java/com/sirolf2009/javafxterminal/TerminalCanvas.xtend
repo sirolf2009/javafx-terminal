@@ -70,7 +70,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		setFill(theme.background())
 		fillRect(0, 0, getWidth(), getHeight())
 		restore()
-		setStroke(theme.foreground())
+		setFill(theme.foreground())
 		if(!grid.isEmpty()) {
 			val lines = grid.rowKeySet().last()
 			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[drawLine(it)]
@@ -88,7 +88,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			stylesGrid.get(y, x)?.forEach [
 				accept(g)
 			]
-			strokeText(char.toString(), x.columnToScreen(), y.rowToScreen())
+			fillText(char.toString(), x.columnToScreen(), y.rowToScreen())
 		]
 		restore()
 	}
@@ -97,8 +97,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		extension val g = getGraphicsContext2D()
 		save()
 		setFill(Color.gray(0.5, System.currentTimeMillis() % 1000 / 500))
-		val pos = caret.get()
-		fillText("█", pos.getX().intValue().columnToScreen(), pos.getY().intValue().rowToScreen())
+		fillText("█", getCurrentColumn().columnToScreen(), getCurrentLine().rowToScreen())
 		restore()
 	}
 
@@ -111,7 +110,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void newLine() {
-		val y = caret.get().getY().intValue()
+		val y = getCurrentLine()
 		setText(grid.row(y).lastKey() + 1, y, "\n")
 		(y + 2 ..< getLines()).toList().reverse().forEach [
 			setText(it + 2, getLine(it + 1))
@@ -125,7 +124,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void moveCaretDown(int amount) {
-		caret.set(new Point2D(caret.get().getX().intValue(), caret.get().getY().intValue() + amount))
+		moveTo(getCurrentColumn(), getCurrentLine()+amount)
 	}
 
 	def void moveCaretLeft() {
@@ -133,7 +132,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void moveCaretLeft(int amount) {
-		caret.set(new Point2D(caret.get().getX().intValue() - amount, caret.get().getY().intValue()))
+		moveTo(getCurrentColumn() - amount, getCurrentLine())
 	}
 
 	def void moveCaretRight() {
@@ -141,7 +140,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void moveCaretRight(int amount) {
-		caret.set(new Point2D(caret.get().getX().intValue() + amount, caret.get().getY().intValue()))
+		moveTo(getCurrentColumn() + amount, getCurrentLine())
 	}
 
 	def void moveCaretUp() {
@@ -149,7 +148,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void moveCaretUp(int amount) {
-		caret.set(new Point2D(caret.get().getX().intValue(), caret.get().getY().intValue() - amount))
+		moveTo(getCurrentColumn(), getCurrentLine()-amount)
 	}
 
 	def void moveTo(int x, int y) {
@@ -157,8 +156,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void deletePreviousChar() {
-		val caret = caret.getValue()
-		clear(caret.getX().intValue() - 1, caret.getY().intValue())
+		clear(getCurrentColumn() -1, getCurrentLine())
 		moveCaretLeft()
 	}
 
@@ -183,9 +181,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		val caret = caret.get()
 		setText(caret.getX().intValue(), caret.getY().intValue(), text)
 		setStyle(caret.getX().intValue(), caret.getY().intValue(), styles)
-		val newLoc = new Point2D(caret.getX().intValue() + text.length(), caret.getY().intValue())
-		this.caret.set(newLoc)
-		return newLoc
+		moveCaretRight(text.length())
 	}
 	
 	def String getGridString() {
@@ -226,16 +222,14 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	def insertText(String text) {
 		val caret = caret.get()
 		setText(caret.getX().intValue(), caret.getY().intValue(), text)
-		val newLoc = new Point2D(caret.getX().intValue() + text.length(), caret.getY().intValue())
-		this.caret.set(newLoc)
-		return newLoc
+		moveCaretRight(text.length())
 	}
 
 	def insertStyles(List<Consumer<GraphicsContext>> styles) {
 		val caret = caret.get()
 		setStyle(caret.getX().intValue(), caret.getY().intValue(), styles)
 		val newLoc = new Point2D(caret.getX().intValue() + 1, caret.getY().intValue())
-		this.caret.set(newLoc)
+		moveCaretRight(1)
 		return newLoc
 	}
 

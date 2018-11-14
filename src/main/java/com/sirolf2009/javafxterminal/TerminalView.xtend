@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory
 	// OSC = Operating System Command
 	static val MULTI_OSC = ']'.toCharArray().get(0)
 
-	var RenderingContext styleContext = new RenderingContext()
+	var RenderingContext styleContext = new RenderingContext(theme)
 
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
+//				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 				characters.onNext(char as char)
 				try {
 					buffer.append(char as char)

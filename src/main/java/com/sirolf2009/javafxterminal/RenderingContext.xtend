@@ -8,18 +8,24 @@ import javafx.scene.text.Font
 import javafx.scene.text.FontPosture
 import javafx.scene.text.FontWeight
 import org.eclipse.xtend.lib.annotations.EqualsHashCode
+import com.sirolf2009.javafxterminal.theme.ITheme
 
 @EqualsHashCode class RenderingContext implements Consumer<GraphicsContext> {
 
+	val ITheme theme
 	var FontWeight fontWeight
 	var FontPosture fontPosture
 	var Color background
 	var Color foreground
 
-	new() {
+	new(ITheme theme) {
+		this.theme = theme
+		background = theme.background()
+		foreground = theme.foreground()
 	}
 
 	new(RenderingContext r) {
+		this.theme = r.theme
 		this.fontWeight = r.fontWeight
 		this.fontPosture = r.fontPosture
 		this.background = r.background
@@ -33,7 +39,7 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 		if(background !== null) {
 		}
 		if(foreground !== null) {
-			t.setStroke(foreground)
+			t.setFill(foreground)
 		}
 	}
 
@@ -43,7 +49,7 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 	}
 
 	def RenderingContext clear() {
-		return new RenderingContext()
+		return new RenderingContext(theme)
 	}
 
 	def RenderingContext bold() {
@@ -79,8 +85,8 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 	override toString() {
 		val segments = new ArrayList()
 		if(fontWeight !== null || fontPosture !== null) segments.add('''Font: «Font.font("Monospaced", fontWeight, fontPosture, -1)»''')
-		if(foreground !== null) segments.add('''Foreground: «foreground»''')
-		if(background !== null) segments.add('''Background: «background»''')
+		if(foreground !== null) segments.add('''Foreground: «foreground» «if(foreground == theme.foreground()) "(default)"»''')
+		if(background !== null) segments.add('''Background: «background» «if(background == theme.background()) "(default)"»''')
 		return '''RenderingContext [«segments.join(", ")»]'''
 	}
 

@@ -1,10 +1,9 @@
 package com.sirolf2009.javafxterminal.command
 
 import com.sirolf2009.javafxterminal.TerminalCanvas
-import java.util.List
-import org.eclipse.xtend.lib.annotations.FinalFieldsConstructor
+import org.eclipse.xtend.lib.annotations.Data
 
-@FinalFieldsConstructor class SelectCharacterSet implements Command {
+@Data class SelectCharacterSet implements Command {
 	
 	val boolean G0
 	val Character type
