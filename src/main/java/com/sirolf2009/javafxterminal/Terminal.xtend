@@ -12,6 +12,7 @@ import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
 import org.eclipse.xtend.lib.annotations.Accessors
+import javafx.scene.input.ScrollEvent
 
 /**
  * The division of labor between the terminal and the shell is not completely obvious. Here are their main tasks.
@@ -61,6 +62,16 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		addEventFilter(MouseEvent.ANY) [
 			if(getEventType() == MouseEvent.MOUSE_CLICKED) {
 				requestFocus()
+			}
+			consume()
+		]
+		addEventFilter(ScrollEvent.ANY) [
+			if(getEventType() == ScrollEvent.SCROLL) {
+				if(getDeltaY() > 0) {
+					moveFocusUp()
+				} else {
+					moveFocusDown()
+				}
 			}
 			consume()
 		]

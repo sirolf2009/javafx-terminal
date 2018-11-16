@@ -67,19 +67,25 @@ import org.slf4j.LoggerFactory
 	val columns = new SimpleIntegerProperty()
 	val rows = new SimpleIntegerProperty()
 
+	val ObservableReader reader
 	val Subject<Character> characters = PublishSubject.create()
 	val Subject<Command> commands = PublishSubject.create()
 	val Observable<Command> aggregatedCommands
 
-	new(Reader reader, ITheme theme) {
+	new(Reader input, ITheme theme) {
 		super(theme)
 		getStyleClass().add("terminal")
+		
+		reader = new ObservableReader(input);
+		
+//		reader.characters.subscribe [
+//			println('''read char «it» «CharacterNames.getCharacterName(it)»: «it as char»''')
+//		]
 
 		new Thread [
 			val buffer = new StringBuffer()
 			var char = 0
 			while((char = reader.read) != -1) {
-//				println('''read char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 				characters.onNext(char as char)
 				try {
 					buffer.append(char as char)
@@ -136,6 +142,8 @@ import org.slf4j.LoggerFactory
 				log.error("Failed to execute " + it, e)
 			}
 		]
+		
+		drawTimeline()
 	}
 
 	// https://github.com/JetBrains/jediterm/blob/master/terminal/src/com/jediterm/terminal/emulator/JediEmulator.java
@@ -360,6 +368,7 @@ import org.slf4j.LoggerFactory
 								throw new RuntimeException("Unknown style " + it + " with params " + params)
 						}
 					}
+//					println("New Context: "+styleContext)
 				} else if(character.toString().equals("A")) {
 					commands.onNext(new MoveCaretUp(1))
 				} else if(character.toString().equals("B")) {

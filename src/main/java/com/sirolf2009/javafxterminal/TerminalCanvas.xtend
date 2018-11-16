@@ -21,6 +21,7 @@ import javafx.scene.text.Font
 import javafx.util.Duration
 import com.sirolf2009.javafxterminal.theme.ITheme
 import org.eclipse.xtend.lib.annotations.Accessors
+import java.util.concurrent.atomic.AtomicInteger
 
 @Accessors class TerminalCanvas extends Canvas {
 
@@ -72,23 +73,24 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		restore()
 		setFill(theme.foreground())
 		if(!grid.isEmpty()) {
-			val lines = grid.rowKeySet().last()
-			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[drawLine(it)]
+			val lines = getLines()
+			val counter = new AtomicInteger()
+			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[drawLine(it, (counter.getAndIncrement()*charHeight).intValue())]
 		}
 		drawCursor()
 		restore()
 	}
 
-	def void drawLine(int y) {
+	def void drawLine(int row, int yPixel) {
 		extension val g = getGraphicsContext2D()
 		save()
-		grid.row(y).entrySet().forEach [
+		grid.row(row).entrySet().forEach [
 			val x = getKey()
 			val char = getValue()
-			stylesGrid.get(y, x)?.forEach [
+			stylesGrid.get(row, x)?.forEach [
 				accept(g)
 			]
-			fillText(char.toString(), x.columnToScreen(), y.rowToScreen())
+			fillText(char.toString(), x.columnToScreen(), yPixel)
 		]
 		restore()
 	}
@@ -97,7 +99,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		extension val g = getGraphicsContext2D()
 		save()
 		setFill(Color.gray(0.5, System.currentTimeMillis() % 1000 / 500))
-		fillText("█", getCurrentColumn().columnToScreen(), getCurrentLine().rowToScreen())
+		fillText("█", getCurrentColumn().columnToScreen(), getCurrentLine().rowToScreen() - (focusedRow.get()*charHeight))
 		restore()
 	}
 
@@ -111,12 +113,28 @@ import org.eclipse.xtend.lib.annotations.Accessors
 
 	def void newLine() {
 		val y = getCurrentLine()
-		setText(grid.row(y).lastKey() + 1, y, "\n")
+		setText(getRowWidth(y) + 1, y, "\n")
 		(y + 2 ..< getLines()).toList().reverse().forEach [
 			setText(it + 2, getLine(it + 1))
 		]
 		clearLine(y + 1)
 		moveTo(0, y + 1)
+	}
+	
+	def void moveFocusUp() {
+		moveFocusUp(1)
+	}
+	
+	def void moveFocusUp(int amount) {
+		focusedRow.set(focusedRow.get() + amount)
+	}
+	
+	def void moveFocusDown() {
+		moveFocusDown(1)
+	}
+	
+	def void moveFocusDown(int amount) {
+		focusedRow.set(focusedRow.get() - amount)
 	}
 
 	def void moveCaretDown() {
@@ -180,7 +198,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	def insertText(String text, List<Consumer<GraphicsContext>> styles) {
 		val caret = caret.get()
 		setText(caret.getX().intValue(), caret.getY().intValue(), text)
-		setStyle(caret.getX().intValue(), caret.getY().intValue(), styles)
+		(0 ..< text.length()).forEach[setStyle(caret.getX().intValue()+it, caret.getY().intValue(), styles)]
 		moveCaretRight(text.length())
 	}
 	
@@ -234,22 +252,24 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void setText(int x, int y, String text) {
-		if(x < 0) {
-			throw new IllegalArgumentException('''Cannot set text «text» at negative indeces («x», «y»)''')
-		} else if(x+text.length() > getWinWidth()) {
-			throw new IllegalArgumentException('''Cannot set text «text» @ («x», «y»)-(«x+text.length()», «y») outside the screen width «getWinWidth()»''')
-		}
+		//TODO support word wrapping
+//		if(x < 0) {
+//			throw new IllegalArgumentException('''Cannot set text «text» at negative indeces («x», «y»)''')
+//		} else if(x+text.length() > getWinWidth()) {
+//			throw new IllegalArgumentException('''Cannot set text «text» @ («x», «y»)-(«x+text.length()», «y») outside the screen width «getWinWidth()»''')
+//		}
 		text.toCharArray().forEach [ it, index |
 			grid.put(y, x + index, it)
 		]
 	}
 
 	def void setStyle(int x, int y, List<Consumer<GraphicsContext>> stylesList) {
-		if(x < 0) {
-			throw new IllegalArgumentException('''Cannot set styles «stylesList» at negative indeces («x», «y»)''')
-		} else if(x > getWinWidth()) {
-			throw new IllegalArgumentException('''Cannot set styles «stylesList» outside the screen («x», «y»)''')
-		}
+		//TODO support word wrapping
+//		if(x < 0) {
+//			throw new IllegalArgumentException('''Cannot set styles «stylesList» at negative indeces («x», «y»)''')
+//		} else if(x > getWinWidth()) {
+//			throw new IllegalArgumentException('''Cannot set styles «stylesList» outside the screen («x», «y»)''')
+//		}
 		stylesGrid.put(y, x, stylesList)
 	}
 
@@ -290,7 +310,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def getWinSize() {
-		return new WinSize(getWinWidth(), getWinHeight())
+		return new WinSize(getWinWidth(), getWinHeight(), getWidth().intValue(), getHeight().intValue())
 	}
 
 	def getWinWidth() {

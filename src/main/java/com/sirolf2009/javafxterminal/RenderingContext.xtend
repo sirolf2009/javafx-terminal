@@ -33,9 +33,7 @@ import com.sirolf2009.javafxterminal.theme.ITheme
 	}
 
 	override accept(GraphicsContext t) {
-		if(fontWeight !== null || fontPosture !== null) {
-			t.setFont(Font.font("Monospaced", fontWeight, fontPosture, -1))
-		}
+		t.setFont(Font.font("Monospaced", fontWeight, fontPosture, -1))
 		if(background !== null) {
 		}
 		if(foreground !== null) {

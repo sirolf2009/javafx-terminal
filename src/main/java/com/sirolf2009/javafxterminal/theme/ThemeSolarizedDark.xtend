@@ -10,7 +10,11 @@ class ThemeSolarizedDark implements ITheme {
 	}
 	
 	override foreground() {
-		return foregroundWhite()
+		return foregroundBlack()
+	}
+	
+	override foregroundBlack() {
+		return Color.rgb(253, 246, 227)
 	}
 	
 	@Cached
