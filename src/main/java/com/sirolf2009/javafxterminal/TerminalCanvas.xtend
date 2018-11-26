@@ -3,9 +3,10 @@ package com.sirolf2009.javafxterminal
 import com.google.common.collect.HashBasedTable
 import com.google.common.collect.TreeBasedTable
 import com.pty4j.WinSize
+import com.sirolf2009.javafxterminal.theme.ITheme
 import com.sun.javafx.tk.Toolkit
 import java.util.List
-import java.util.function.Consumer
+import java.util.concurrent.atomic.AtomicInteger
 import javafx.animation.KeyFrame
 import javafx.animation.Timeline
 import javafx.beans.property.IntegerProperty
@@ -15,25 +16,22 @@ import javafx.beans.property.SimpleObjectProperty
 import javafx.geometry.Point2D
 import javafx.geometry.VPos
 import javafx.scene.canvas.Canvas
-import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.util.Duration
-import com.sirolf2009.javafxterminal.theme.ITheme
 import org.eclipse.xtend.lib.annotations.Accessors
-import java.util.concurrent.atomic.AtomicInteger
 
 @Accessors class TerminalCanvas extends Canvas {
 
 	val ITheme theme
 	val TreeBasedTable<Integer, Integer, Character> grid
-	val HashBasedTable<Integer, Integer, List<Consumer<GraphicsContext>>> stylesGrid
+	val HashBasedTable<Integer, Integer, List<CharModifier>> stylesGrid
 	val IntegerProperty focusedRow = new SimpleIntegerProperty(0)
 	val font = Font.font("Monospaced")
 	val float charWidth
 	val float charHeight
-	val ObjectProperty<Point2D> anchor
-	val ObjectProperty<Point2D> caret
+	val ObjectProperty<Point> anchor
+	val ObjectProperty<Point> caret
 
 	new(ITheme theme) {
 		super(400, 400)
@@ -51,7 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger
 		charWidth = metrics.computeStringWidth("a")
 		charHeight = metrics.getLineHeight()
 		anchor = new SimpleObjectProperty(this, "anchor")
-		caret = new SimpleObjectProperty(this, "caret", new Point2D(0, 0))
+		caret = new SimpleObjectProperty(this, "caret", new Point(0, 0))
 	}
 	
 	def void drawTimeline() {
@@ -88,7 +86,7 @@ import java.util.concurrent.atomic.AtomicInteger
 			val x = getKey()
 			val char = getValue()
 			stylesGrid.get(row, x)?.forEach [
-				accept(g)
+				accept(this, g, new Point(x, row))
 			]
 			fillText(char.toString(), x.columnToScreen(), yPixel)
 		]
@@ -99,7 +97,7 @@ import java.util.concurrent.atomic.AtomicInteger
 		extension val g = getGraphicsContext2D()
 		save()
 		setFill(Color.gray(0.5, System.currentTimeMillis() % 1000 / 500))
-		fillText("█", getCurrentColumn().columnToScreen(), getCurrentLine().rowToScreen() - (focusedRow.get()*charHeight))
+		fillText("█", getCurrentColumn().columnToScreen(), getCurrentLine().rowToScreen())
 		restore()
 	}
 
@@ -170,7 +168,7 @@ import java.util.concurrent.atomic.AtomicInteger
 	}
 
 	def void moveTo(int x, int y) {
-		caret.set(new Point2D(x, y))
+		caret.set(new Point(x, y))
 	}
 
 	def void deletePreviousChar() {
@@ -195,7 +193,7 @@ import java.util.concurrent.atomic.AtomicInteger
 		setText(x, y, text)
 	}
 
-	def insertText(String text, List<Consumer<GraphicsContext>> styles) {
+	def insertText(String text, List<CharModifier> styles) {
 		val caret = caret.get()
 		setText(caret.getX().intValue(), caret.getY().intValue(), text)
 		(0 ..< text.length()).forEach[setStyle(caret.getX().intValue()+it, caret.getY().intValue(), styles)]
@@ -243,7 +241,7 @@ import java.util.concurrent.atomic.AtomicInteger
 		moveCaretRight(text.length())
 	}
 
-	def insertStyles(List<Consumer<GraphicsContext>> styles) {
+	def insertStyles(List<CharModifier> styles) {
 		val caret = caret.get()
 		setStyle(caret.getX().intValue(), caret.getY().intValue(), styles)
 		val newLoc = new Point2D(caret.getX().intValue() + 1, caret.getY().intValue())
@@ -263,7 +261,7 @@ import java.util.concurrent.atomic.AtomicInteger
 		]
 	}
 
-	def void setStyle(int x, int y, List<Consumer<GraphicsContext>> stylesList) {
+	def void setStyle(int x, int y, List<CharModifier> stylesList) {
 		//TODO support word wrapping
 //		if(x < 0) {
 //			throw new IllegalArgumentException('''Cannot set styles «stylesList» at negative indeces («x», «y»)''')
@@ -298,7 +296,7 @@ import java.util.concurrent.atomic.AtomicInteger
 	}
 
 	def rowToScreen(int row) {
-		return row * charHeight
+		return (row * charHeight) - (focusedRow.get()*charHeight)
 	}
 
 	def columnToScreen(int column) {

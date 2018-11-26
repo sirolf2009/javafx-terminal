@@ -30,9 +30,7 @@ import java.util.Optional
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiPredicate
-import java.util.function.Consumer
 import javafx.beans.property.SimpleIntegerProperty
-import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.slf4j.Logger
@@ -75,9 +73,9 @@ import org.slf4j.LoggerFactory
 	new(Reader input, ITheme theme) {
 		super(theme)
 		getStyleClass().add("terminal")
-		
+
 		reader = new ObservableReader(input);
-		
+
 //		reader.characters.subscribe [
 //			println('''read char «it» «CharacterNames.getCharacterName(it)»: «it as char»''')
 //		]
@@ -142,7 +140,7 @@ import org.slf4j.LoggerFactory
 				log.error("Failed to execute " + it, e)
 			}
 		]
-		
+
 		drawTimeline()
 	}
 
@@ -157,215 +155,222 @@ import org.slf4j.LoggerFactory
 			if(characterCode >= 0x40 && characterCode <= 0x7E) {
 				val array = new LinkedList(params.toString().split(";").filter[!isEmpty()].toList())
 				if(character.toString().equals("m")) {
-					while(array.peek() !== null) {
-						val it = Integer.parseInt(array.poll())
-						switch (it) {
-							case 0:
-								styleContext = styleContext.clear()
-							case 1:
-								styleContext = styleContext.bold()
-							case 2:
-								styleContext = styleContext.thin()
-							case 3:
-								styleContext = styleContext.italic()
-							case 4: {
-								// TODO underline
-							}
-							case 5: {
-								// TODO slow blink, less than 150 per minute
-							}
-							case 6: {
-								// TODO fast blink, more than 150 per minute
-							}
-							case 7:
-								styleContext = styleContext.foreground(null).background(null)
-							case 10: {
-								// TODO primary font
-							}
-							case 11: {
-								// TODO alternative font
-							}
-							case 12: {
-								// TODO alternative font
-							}
-							case 13: {
-								// TODO alternative font
-							}
-							case 14: {
-								// TODO alternative font
-							}
-							case 15: {
-								// TODO alternative font
-							}
-							case 16: {
-								// TODO alternative font
-							}
-							case 17: {
-								// TODO alternative font
-							}
-							case 18: {
-								// TODO alternative font
-							}
-							case 19: {
-								// TODO alternative font
-							}
-							case 24: {
-								// TODO underline off
-							}
-							case 30:
-								styleContext = styleContext.foreground(theme.foregroundBlack())
-							case 31:
-								styleContext = styleContext.foreground(theme.foregroundRed())
-							case 32:
-								styleContext = styleContext.foreground(theme.foregroundGreen())
-							case 33:
-								styleContext = styleContext.foreground(theme.foregroundYellow())
-							case 34:
-								styleContext = styleContext.foreground(theme.foregroundBlue())
-							case 35:
-								styleContext = styleContext.foreground(theme.foregroundMagenta())
-							case 36:
-								styleContext = styleContext.foreground(theme.foregroundCyan())
-							case 37:
-								styleContext = styleContext.foreground(theme.foregroundWhite())
-							case 38: {
-								switch (Integer.parseInt(array.poll())) {
-									case 2:
-										styleContext = styleContext.foreground(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
-									case 5: {
-										switch (Integer.parseInt(array.poll())) {
-											case 0:
-												styleContext = styleContext.foreground(theme.foregroundBlack())
-											case 1:
-												styleContext = styleContext.foreground(theme.foregroundRed())
-											case 2:
-												styleContext = styleContext.foreground(theme.foregroundGreen())
-											case 3:
-												styleContext = styleContext.foreground(theme.foregroundYellow())
-											case 4:
-												styleContext = styleContext.foreground(theme.foregroundBlue())
-											case 5:
-												styleContext = styleContext.foreground(theme.foregroundMagenta())
-											case 6:
-												styleContext = styleContext.foreground(theme.foregroundCyan())
-											case 7:
-												styleContext = styleContext.foreground(theme.foregroundWhite())
-											case 8:
-												styleContext = styleContext.foreground(theme.foregroundBlackBright())
-											case 9:
-												styleContext = styleContext.foreground(theme.foregroundRedBright())
-											case 11:
-												styleContext = styleContext.foreground(theme.foregroundGreenBright())
-											case 12:
-												styleContext = styleContext.foreground(theme.foregroundYellowBright())
-											case 13:
-												styleContext = styleContext.foreground(theme.foregroundBlueBright())
-											case 14:
-												styleContext = styleContext.foreground(theme.foregroundMagentaBright())
-											case 15:
-												styleContext = styleContext.foreground(theme.foregroundCyanBright())
-											case 16:
-												styleContext = styleContext.foreground(theme.foregroundWhiteBright())
+					if(array.isEmpty()) {
+						styleContext = styleContext.clear()
+					} else {
+						while(array.peek() !== null) {
+							val it = Integer.parseInt(array.poll())
+							switch (it) {
+								case 0:
+									styleContext = styleContext.clear()
+								case 1:
+									styleContext = styleContext.bold()
+								case 2:
+									styleContext = styleContext.thin()
+								case 3:
+									styleContext = styleContext.italic()
+								case 4: {
+									// TODO underline
+								}
+								case 5: {
+									// TODO slow blink, less than 150 per minute
+								}
+								case 6: {
+									// TODO fast blink, more than 150 per minute
+								}
+								case 7:
+									styleContext = styleContext.foreground(null).background(null)
+								case 10: {
+									// TODO primary font
+								}
+								case 11: {
+									// TODO alternative font
+								}
+								case 12: {
+									// TODO alternative font
+								}
+								case 13: {
+									// TODO alternative font
+								}
+								case 14: {
+									// TODO alternative font
+								}
+								case 15: {
+									// TODO alternative font
+								}
+								case 16: {
+									// TODO alternative font
+								}
+								case 17: {
+									// TODO alternative font
+								}
+								case 18: {
+									// TODO alternative font
+								}
+								case 19: {
+									// TODO alternative font
+								}
+								case 24: {
+									// TODO underline off
+								}
+								case 30:
+									styleContext = styleContext.foreground(theme.foregroundBlack())
+								case 31:
+									styleContext = styleContext.foreground(theme.foregroundRed())
+								case 32:
+									styleContext = styleContext.foreground(theme.foregroundGreen())
+								case 33:
+									styleContext = styleContext.foreground(theme.foregroundYellow())
+								case 34:
+									styleContext = styleContext.foreground(theme.foregroundBlue())
+								case 35:
+									styleContext = styleContext.foreground(theme.foregroundMagenta())
+								case 36:
+									styleContext = styleContext.foreground(theme.foregroundCyan())
+								case 37:
+									styleContext = styleContext.foreground(theme.foregroundWhite())
+								case 38: {
+									switch (Integer.parseInt(array.poll())) {
+										case 2:
+											styleContext = styleContext.foreground(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
+										case 5: {
+											val code = Integer.parseInt(array.poll())
+											switch (code) {
+												case 0:
+													styleContext = styleContext.foreground(theme.foregroundBlack())
+												case 1:
+													styleContext = styleContext.foreground(theme.foregroundRed())
+												case 2:
+													styleContext = styleContext.foreground(theme.foregroundGreen())
+												case 3:
+													styleContext = styleContext.foreground(theme.foregroundYellow())
+												case 4:
+													styleContext = styleContext.foreground(theme.foregroundBlue())
+												case 5:
+													styleContext = styleContext.foreground(theme.foregroundMagenta())
+												case 6:
+													styleContext = styleContext.foreground(theme.foregroundCyan())
+												case 7:
+													styleContext = styleContext.foreground(theme.foregroundWhite())
+												case 8:
+													styleContext = styleContext.foreground(theme.foregroundBlackBright())
+												case 9:
+													styleContext = styleContext.foreground(theme.foregroundRedBright())
+												case 11:
+													styleContext = styleContext.foreground(theme.foregroundGreenBright())
+												case 12:
+													styleContext = styleContext.foreground(theme.foregroundYellowBright())
+												case 13:
+													styleContext = styleContext.foreground(theme.foregroundBlueBright())
+												case 14:
+													styleContext = styleContext.foreground(theme.foregroundMagentaBright())
+												case 15:
+													styleContext = styleContext.foreground(theme.foregroundCyanBright())
+												case 16:
+													styleContext = styleContext.foreground(theme.foregroundWhiteBright())
+												case code >= 17 && code <= 231:
+													styleContext = styleContext.foreground(theme.foregroundWhiteBright())
+											}
 										}
 									}
 								}
-							}
-							case 39:
-								styleContext = styleContext.foreground(null)
-							case 40:
-								styleContext = styleContext.background(theme.backgroundBlack())
-							case 41:
-								styleContext = styleContext.background(theme.backgroundRed())
-							case 42:
-								styleContext = styleContext.background(theme.backgroundGreen())
-							case 43:
-								styleContext = styleContext.background(theme.backgroundYellow())
-							case 44:
-								styleContext = styleContext.background(theme.backgroundBlue())
-							case 45:
-								styleContext = styleContext.background(theme.backgroundMagenta())
-							case 46:
-								styleContext = styleContext.background(theme.backgroundCyan())
-							case 47:
-								styleContext = styleContext.background(theme.backgroundWhite())
-							case 48: {
-								switch (Integer.parseInt(array.poll())) {
-									case 2:
-										styleContext = styleContext.background(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
-									case 5: {
-										switch (Integer.parseInt(array.poll())) {
-											case 0:
-												styleContext = styleContext.background(theme.backgroundBlack())
-											case 1:
-												styleContext = styleContext.background(theme.backgroundRed())
-											case 2:
-												styleContext = styleContext.background(theme.backgroundGreen())
-											case 3:
-												styleContext = styleContext.background(theme.backgroundYellow())
-											case 4:
-												styleContext = styleContext.background(theme.backgroundBlue())
-											case 5:
-												styleContext = styleContext.background(theme.backgroundMagenta())
-											case 6:
-												styleContext = styleContext.background(theme.backgroundCyan())
-											case 7:
-												styleContext = styleContext.background(theme.backgroundWhite())
-											case 8:
-												styleContext = styleContext.background(theme.backgroundBlackBright())
-											case 9:
-												styleContext = styleContext.background(theme.backgroundRedBright())
-											case 11:
-												styleContext = styleContext.background(theme.backgroundGreenBright())
-											case 12:
-												styleContext = styleContext.background(theme.backgroundYellowBright())
-											case 13:
-												styleContext = styleContext.background(theme.backgroundBlueBright())
-											case 14:
-												styleContext = styleContext.background(theme.backgroundMagentaBright())
-											case 15:
-												styleContext = styleContext.background(theme.backgroundCyanBright())
-											case 16:
-												styleContext = styleContext.background(theme.backgroundWhiteBright())
+								case 39:
+									styleContext = styleContext.foreground(null)
+								case 40:
+									styleContext = styleContext.background(theme.backgroundBlack())
+								case 41:
+									styleContext = styleContext.background(theme.backgroundRed())
+								case 42:
+									styleContext = styleContext.background(theme.backgroundGreen())
+								case 43:
+									styleContext = styleContext.background(theme.backgroundYellow())
+								case 44:
+									styleContext = styleContext.background(theme.backgroundBlue())
+								case 45:
+									styleContext = styleContext.background(theme.backgroundMagenta())
+								case 46:
+									styleContext = styleContext.background(theme.backgroundCyan())
+								case 47:
+									styleContext = styleContext.background(theme.backgroundWhite())
+								case 48: {
+									switch (Integer.parseInt(array.poll())) {
+										case 2:
+											styleContext = styleContext.background(Color.rgb(Integer.parseInt(array.poll()), Integer.parseInt(array.poll()), Integer.parseInt(array.poll())))
+										case 5: {
+											switch (Integer.parseInt(array.poll())) {
+												case 0:
+													styleContext = styleContext.background(theme.backgroundBlack())
+												case 1:
+													styleContext = styleContext.background(theme.backgroundRed())
+												case 2:
+													styleContext = styleContext.background(theme.backgroundGreen())
+												case 3:
+													styleContext = styleContext.background(theme.backgroundYellow())
+												case 4:
+													styleContext = styleContext.background(theme.backgroundBlue())
+												case 5:
+													styleContext = styleContext.background(theme.backgroundMagenta())
+												case 6:
+													styleContext = styleContext.background(theme.backgroundCyan())
+												case 7:
+													styleContext = styleContext.background(theme.backgroundWhite())
+												case 8:
+													styleContext = styleContext.background(theme.backgroundBlackBright())
+												case 9:
+													styleContext = styleContext.background(theme.backgroundRedBright())
+												case 11:
+													styleContext = styleContext.background(theme.backgroundGreenBright())
+												case 12:
+													styleContext = styleContext.background(theme.backgroundYellowBright())
+												case 13:
+													styleContext = styleContext.background(theme.backgroundBlueBright())
+												case 14:
+													styleContext = styleContext.background(theme.backgroundMagentaBright())
+												case 15:
+													styleContext = styleContext.background(theme.backgroundCyanBright())
+												case 16:
+													styleContext = styleContext.background(theme.backgroundWhiteBright())
+											}
 										}
 									}
 								}
+								case 49:
+									styleContext = styleContext.background(null)
+								case 90:
+									styleContext = styleContext.foreground(theme.foregroundBlackBright())
+								case 91:
+									styleContext = styleContext.foreground(theme.foregroundRedBright())
+								case 92:
+									styleContext = styleContext.foreground(theme.foregroundGreenBright())
+								case 93:
+									styleContext = styleContext.foreground(theme.foregroundYellowBright())
+								case 94:
+									styleContext = styleContext.foreground(theme.foregroundBlueBright())
+								case 95:
+									styleContext = styleContext.foreground(theme.foregroundMagentaBright())
+								case 96:
+									styleContext = styleContext.foreground(theme.foregroundCyanBright())
+								case 97:
+									styleContext = styleContext.foreground(theme.foregroundWhiteBright())
+								case 100:
+									styleContext = styleContext.background(theme.backgroundBlackBright())
+								case 101:
+									styleContext = styleContext.background(theme.backgroundRedBright())
+								case 102:
+									styleContext = styleContext.background(theme.backgroundGreenBright())
+								case 103:
+									styleContext = styleContext.background(theme.backgroundYellowBright())
+								case 104:
+									styleContext = styleContext.background(theme.backgroundBlueBright())
+								case 105:
+									styleContext = styleContext.background(theme.backgroundMagentaBright())
+								case 106:
+									styleContext = styleContext.background(theme.backgroundCyanBright())
+								case 107:
+									styleContext = styleContext.background(theme.backgroundWhiteBright())
+								default:
+									throw new RuntimeException("Unknown style " + it + " with params " + params)
 							}
-							case 49:
-								styleContext = styleContext.background(null)
-							case 90:
-								styleContext = styleContext.foreground(theme.foregroundBlackBright())
-							case 91:
-								styleContext = styleContext.foreground(theme.foregroundRedBright())
-							case 92:
-								styleContext = styleContext.foreground(theme.foregroundGreenBright())
-							case 93:
-								styleContext = styleContext.foreground(theme.foregroundYellowBright())
-							case 94:
-								styleContext = styleContext.foreground(theme.foregroundBlueBright())
-							case 95:
-								styleContext = styleContext.foreground(theme.foregroundMagentaBright())
-							case 96:
-								styleContext = styleContext.foreground(theme.foregroundCyanBright())
-							case 97:
-								styleContext = styleContext.foreground(theme.foregroundWhiteBright())
-							case 100:
-								styleContext = styleContext.background(theme.backgroundBlackBright())
-							case 101:
-								styleContext = styleContext.background(theme.backgroundRedBright())
-							case 102:
-								styleContext = styleContext.background(theme.backgroundGreenBright())
-							case 103:
-								styleContext = styleContext.background(theme.backgroundYellowBright())
-							case 104:
-								styleContext = styleContext.background(theme.backgroundBlueBright())
-							case 105:
-								styleContext = styleContext.background(theme.backgroundMagentaBright())
-							case 106:
-								styleContext = styleContext.background(theme.backgroundCyanBright())
-							case 107:
-								styleContext = styleContext.background(theme.backgroundWhiteBright())
-							default:
-								throw new RuntimeException("Unknown style " + it + " with params " + params)
 						}
 					}
 //					println("New Context: "+styleContext)
@@ -422,7 +427,7 @@ import org.slf4j.LoggerFactory
 		commands.onNext(new SelectCharacterSet(false, reader.read() as char))
 	}
 
-	def List<Consumer<GraphicsContext>> getStyles() {
+	def List<CharModifier> getStyles() {
 		return #[new RenderingContext(styleContext)]
 	}
 

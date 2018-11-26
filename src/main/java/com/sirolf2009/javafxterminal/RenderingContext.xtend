@@ -1,16 +1,15 @@
 package com.sirolf2009.javafxterminal
 
+import com.sirolf2009.javafxterminal.theme.ITheme
 import java.util.ArrayList
-import java.util.function.Consumer
 import javafx.scene.canvas.GraphicsContext
 import javafx.scene.paint.Color
 import javafx.scene.text.Font
 import javafx.scene.text.FontPosture
 import javafx.scene.text.FontWeight
 import org.eclipse.xtend.lib.annotations.EqualsHashCode
-import com.sirolf2009.javafxterminal.theme.ITheme
 
-@EqualsHashCode class RenderingContext implements Consumer<GraphicsContext> {
+@EqualsHashCode class RenderingContext implements CharModifier {
 
 	val ITheme theme
 	var FontWeight fontWeight
@@ -32,12 +31,16 @@ import com.sirolf2009.javafxterminal.theme.ITheme
 		this.foreground = r.foreground
 	}
 
-	override accept(GraphicsContext t) {
-		t.setFont(Font.font("Monospaced", fontWeight, fontPosture, -1))
+	override accept(extension TerminalCanvas canvas, extension GraphicsContext g, extension Point point) {
+		setFont(Font.font("Monospaced", fontWeight, fontPosture, -1))
 		if(background !== null) {
+			save()
+			setFill(background)
+			fillText("█", getX().columnToScreen(), getY().rowToScreen())
+			restore()
 		}
 		if(foreground !== null) {
-			t.setFill(foreground)
+			setFill(foreground)
 		}
 	}
 

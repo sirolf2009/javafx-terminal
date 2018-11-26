@@ -16,6 +16,8 @@ interface ITheme {
 	def Color backgroundCyan()
 	def Color backgroundWhite()
 	
+	def Color get256Color(int color)
+	
 	def Color backgroundBlackBright() {
 		return backgroundBlack().brighter()
 	}
