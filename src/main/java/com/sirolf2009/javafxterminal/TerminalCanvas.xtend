@@ -111,7 +111,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 
 	def void newLine() {
 		val y = getCurrentLine()
-		setText(getRowWidth(y) + 1, y, "\n")
+		setText(getRowWidth(y), y, "\n")
 		(y + 2 ..< getLines()).toList().reverse().forEach [
 			setText(it + 2, getLine(it + 1))
 		]
