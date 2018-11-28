@@ -12,6 +12,7 @@ import org.eclipse.xtend.lib.annotations.Data
 
 	override execute(TerminalCanvas it) {
 		insertText(characters, styles)
+		jumpDown()
 	}
 
 }

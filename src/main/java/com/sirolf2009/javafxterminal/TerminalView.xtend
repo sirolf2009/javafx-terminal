@@ -35,6 +35,8 @@ import javafx.scene.paint.Color
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import com.sirolf2009.javafxterminal.command.AlternateBuffer
+import com.sirolf2009.javafxterminal.command.Focus
 
 @Accessors class TerminalView extends TerminalCanvas {
 
@@ -179,7 +181,7 @@ import org.slf4j.LoggerFactory
 									// TODO fast blink, more than 150 per minute
 								}
 								case 7:
-									styleContext = styleContext.foreground(null).background(null)
+									styleContext = styleContext.inverse(true)
 								case 10: {
 									// TODO primary font
 								}
@@ -212,6 +214,9 @@ import org.slf4j.LoggerFactory
 								}
 								case 24: {
 									// TODO underline off
+								}
+								case 27: {
+									styleContext = styleContext.inverse(false)
 								}
 								case 30:
 									styleContext = styleContext.foreground(theme.foregroundBlack())
@@ -395,6 +400,21 @@ import org.slf4j.LoggerFactory
 					val type = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
 					// TODO scrollback buffer
 					commands.onNext(new DeleteText(type))
+				} else if(character.toString().equals("h")) {
+					if(array.size() > 0 && array.get(0).equals("?1049")) {
+						commands.onNext(new AlternateBuffer(true))
+					}
+				} else if(character.toString().equals("l")) {
+					if(array.size() > 0 && array.get(0).equals("?1049")) {
+						commands.onNext(new AlternateBuffer(true))
+					}
+				} else if(character.toString().equals("r")) {
+					//TODO
+					//Name                  Description                            Esc Code
+					//setwin DECSTBM        Set top and bottom line#s of a window  ^[[<v>;<v>r
+					commands.onNext(new Focus(Integer.parseInt(array.get(0))))
+				} else if(character.toString().equals("d")) {
+					commands.onNext(new MoveCaretLeft(Integer.parseInt(array.get(0))))
 				} else {
 					println("Unknown command " + character + " with params " + params + " " + array)
 				}

@@ -124,18 +124,18 @@ class JavaFXTerminalApp extends Application {
 		val update = new Button("update") => [
 			onAction = [
 				grid.getChildren().clear()
-				if(!canvas.getGrid().isEmpty()) {
-					(0 ..< canvas.getGrid().rowMap().values().map[size()].max()).forEach [ x |
+				if(!canvas.getBuffer().getGrid().isEmpty()) {
+					(0 ..< canvas.getBuffer().getGrid().rowMap().values().map[size()].max()).forEach [ x |
 						grid.add(new Label(x + ""), x + 1, 0)
 					]
-					(0 ..< canvas.getGrid().rowKeySet().last()).forEach [ y |
+					(0 ..< canvas.getBuffer().getGrid().rowKeySet().last()).forEach [ y |
 						grid.add(new Label(y + ""), 0, y + 1)
 					]
-					canvas.getGrid().cellSet().forEach [
+					canvas.getBuffer().getGrid().cellSet().forEach [
 						val character = if(getValue().toString().equals("\n")) "↵" else getValue().toString()
 						val label = new Label(character)
 						label.onMouseClicked = [evt|
-							new PopOver(new Label(canvas.stylesGrid.get(getRowKey(), getColumnKey()).toString())).show(label)
+							new PopOver(new Label(canvas.getBuffer().getStylesGrid().get(getRowKey(), getColumnKey()).toString())).show(label)
 						]
 						grid.add(label, getColumnKey().intValue() + 1, getRowKey().intValue() + 1)
 					]

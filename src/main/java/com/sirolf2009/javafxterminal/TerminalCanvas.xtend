@@ -1,6 +1,5 @@
 package com.sirolf2009.javafxterminal
 
-import com.google.common.collect.HashBasedTable
 import com.google.common.collect.TreeBasedTable
 import com.pty4j.WinSize
 import com.sirolf2009.javafxterminal.theme.ITheme
@@ -24,8 +23,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 @Accessors class TerminalCanvas extends Canvas {
 
 	val ITheme theme
-	val TreeBasedTable<Integer, Integer, Character> grid
-	val HashBasedTable<Integer, Integer, List<CharModifier>> stylesGrid
+	val Buffer buffer
 	val IntegerProperty focusedRow = new SimpleIntegerProperty(0)
 	val font = Font.font("Monospaced")
 	val float charWidth
@@ -37,8 +35,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		super(400, 400)
 		this.theme = theme
 		setFocusTraversable(true)
-		grid = TreeBasedTable.create()
-		stylesGrid = HashBasedTable.create()
+		buffer = new Buffer()
 		getGraphicsContext2D() => [
 			setFont(font)
 			setLineWidth(1.0)
@@ -70,10 +67,12 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		fillRect(0, 0, getWidth(), getHeight())
 		restore()
 		setFill(theme.foreground())
-		if(!grid.isEmpty()) {
+		if(!buffer.getGrid().isEmpty()) {
 			val lines = getLines()
 			val counter = new AtomicInteger()
-			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[drawLine(it, (counter.getAndIncrement()*charHeight).intValue())]
+			(focusedRow.get() .. Math.min(focusedRow.get() + getWinHeight(), lines)).forEach[
+				drawLine(it, (counter.getAndIncrement()*charHeight).intValue())
+			]
 		}
 		drawCursor()
 		restore()
@@ -82,10 +81,10 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	def void drawLine(int row, int yPixel) {
 		extension val g = getGraphicsContext2D()
 		save()
-		grid.row(row).entrySet().forEach [
+		buffer.getGrid().row(row).entrySet().forEach [
 			val x = getKey()
 			val char = getValue()
-			stylesGrid.get(row, x)?.forEach [
+			buffer.getStylesGrid().get(row, x)?.forEach [
 				accept(this, g, new Point(x, row))
 			]
 			fillText(char.toString(), x.columnToScreen(), yPixel)
@@ -101,14 +100,6 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		restore()
 	}
 
-	def void focus(int row) {
-		focusedRow.set(row)
-	}
-
-	def int getLines() {
-		return grid.rowKeySet().last()
-	}
-
 	def void newLine() {
 		val y = getCurrentLine()
 		setText(getRowWidth(y), y, "\n")
@@ -119,12 +110,16 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		moveTo(0, y + 1)
 	}
 	
+	def void jumpDown() {
+		focus(Math.max(0, getLines()-getWinHeight()))
+	}
+	
 	def void moveFocusUp() {
 		moveFocusUp(1)
 	}
 	
 	def void moveFocusUp(int amount) {
-		focusedRow.set(focusedRow.get() + amount)
+		focus(focusedRow.get() + amount)
 	}
 	
 	def void moveFocusDown() {
@@ -132,7 +127,11 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 	
 	def void moveFocusDown(int amount) {
-		focusedRow.set(focusedRow.get() - amount)
+		focus(focusedRow.get() - amount)
+	}
+
+	def void focus(int row) {
+		focusedRow.set(Math.min(row, getLines()))
 	}
 
 	def void moveCaretDown() {
@@ -185,7 +184,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def String getLine(int y) {
-		return grid.row(y).values().join()
+		return buffer.getGrid().row(y).values().join()
 	}
 
 	def void setLine(int x, int y, String text) {
@@ -201,7 +200,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 	
 	def String getGridString() {
-		return grid.toGridString()
+		return buffer.getGrid().toGridString()
 	}
 
 	def String toGridString(TreeBasedTable<Integer, Integer, Character> grid) {
@@ -257,7 +256,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 //			throw new IllegalArgumentException('''Cannot set text «text» @ («x», «y»)-(«x+text.length()», «y») outside the screen width «getWinWidth()»''')
 //		}
 		text.toCharArray().forEach [ it, index |
-			grid.put(y, x + index, it)
+			buffer.getGrid().put(y, x + index, it)
 		]
 	}
 
@@ -268,7 +267,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 //		} else if(x > getWinWidth()) {
 //			throw new IllegalArgumentException('''Cannot set styles «stylesList» outside the screen («x», «y»)''')
 //		}
-		stylesGrid.put(y, x, stylesList)
+		buffer.getStylesGrid().put(y, x, stylesList)
 	}
 
 	def void clearLine() {
@@ -276,7 +275,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void clearLine(int y) {
-		grid.row(y).keySet().sort().toList().forEach[x|clear(x, y)]
+		buffer.getGrid().row(y).keySet().sort().toList().forEach[x|clear(x, y)]
 	}
 
 	def void clear(int xFrom, int xTo, int y) {
@@ -284,15 +283,19 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 
 	def void clear(int x, int y) {
-		grid.remove(y, x)
+		buffer.getGrid().remove(y, x)
 	}
 
 	def void clear() {
-		grid.clear()
+		buffer.getGrid().clear()
 	}
-
+	
 	def getRowWidth(int row) {
-		grid.row(row).size()
+		return buffer.getGrid().row(row).size()
+	}
+	
+	def int getLines() {
+		return buffer.getGrid().rowKeySet().last()
 	}
 
 	def rowToScreen(int row) {
@@ -304,7 +307,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	}
 	
 	def getLineCount() {
-		grid.rowKeySet().last() + 1
+		buffer.getGrid().rowKeySet().last() + 1
 	}
 
 	def getWinSize() {

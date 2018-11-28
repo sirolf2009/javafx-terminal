@@ -16,6 +16,7 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 	var FontPosture fontPosture
 	var Color background
 	var Color foreground
+	var boolean inverse
 
 	new(ITheme theme) {
 		this.theme = theme
@@ -32,6 +33,8 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 	}
 
 	override accept(extension TerminalCanvas canvas, extension GraphicsContext g, extension Point point) {
+		val background = if(inverse) this.foreground else this.background
+		val foreground = if(inverse) this.background else this.foreground
 		setFont(Font.font("Monospaced", fontWeight, fontPosture, -1))
 		if(background !== null) {
 			save()
@@ -80,6 +83,12 @@ import org.eclipse.xtend.lib.annotations.EqualsHashCode
 	def RenderingContext foreground(Color color) {
 		val ctx = new RenderingContext(this)
 		ctx.foreground = color
+		return ctx
+	}
+
+	def RenderingContext inverse(boolean enabled) {
+		val ctx = new RenderingContext(this)
+		ctx.inverse = enabled
 		return ctx
 	}
 

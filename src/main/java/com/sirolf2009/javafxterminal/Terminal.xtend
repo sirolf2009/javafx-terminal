@@ -68,9 +68,9 @@ import javafx.scene.input.ScrollEvent
 		addEventFilter(ScrollEvent.ANY) [
 			if(getEventType() == ScrollEvent.SCROLL) {
 				if(getDeltaY() > 0) {
-					moveFocusUp()
-				} else {
 					moveFocusDown()
+				} else {
+					moveFocusUp()
 				}
 			}
 			consume()
