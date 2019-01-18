@@ -37,6 +37,10 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.sirolf2009.javafxterminal.command.AlternateBuffer
 import com.sirolf2009.javafxterminal.command.Focus
+import com.sirolf2009.javafxterminal.command.CursorNextLine
+import com.sirolf2009.javafxterminal.command.CursorPreviousLine
+import com.sirolf2009.javafxterminal.command.CursorHorizontalAbsolute
+import com.sirolf2009.javafxterminal.command.CursorPosition
 
 @Accessors class TerminalView extends TerminalCanvas {
 
@@ -389,6 +393,19 @@ import com.sirolf2009.javafxterminal.command.Focus
 				} else if(character.toString().equals("D")) {
 					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
 					commands.onNext(new MoveCaretLeft(amount))
+				} else if(character.toString().equals("E")) {
+					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					commands.onNext(new CursorNextLine(amount))
+				} else if(character.toString().equals("F")) {
+					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					commands.onNext(new CursorPreviousLine(amount))
+				} else if(character.toString().equals("G")) {
+					val amount = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					commands.onNext(new CursorHorizontalAbsolute(amount))
+				} else if(character.toString().equals("H")) {
+					val x = if(array.size() > 0) Integer.parseInt(array.get(0)) else 1
+					val y = if(array.size() > 1) Integer.parseInt(array.get(1)) else 1
+					commands.onNext(new CursorPosition(x, y))
 				} else if(character.toString().equals("K")) {
 					val mode = if(array.size() > 0) Integer.parseInt(array.get(0)) else 0
 					commands.onNext(new ClearLine(mode))

@@ -66,7 +66,7 @@ class TerminalCanvasTest extends ApplicationTest {
 		assertTextAt("Hello World!", 0, 0)
 		new ClearLine(0).execute(terminal)
 		(0 ..< "Hello World!".length()).forEach[assertTextAt("", it, 0)]
-		(0 ..< "Hello World!".length()).forEach[terminal.getStylesGrid().get(0, it)]
+		(0 ..< "Hello World!".length()).forEach[terminal.getBuffer().getStylesGrid().get(0, it)]
 	}
 	
 	@Test
@@ -95,7 +95,7 @@ class TerminalCanvasTest extends ApplicationTest {
 	
 	def void assertTextAt(String text, int x, int y) {
 		text.toCharArray().indexed().forEach[
-			Assert.assertEquals('''«text»: check char «getKey()» «getValue()»''', getValue(), terminal.getGrid().get(y,x+getKey()))
+			Assert.assertEquals('''«text»: check char «getKey()» «getValue()»''', getValue(), terminal.getBuffer().getGrid().get(y,x+getKey()))
 		]
 	}
 	
@@ -106,7 +106,7 @@ class TerminalCanvasTest extends ApplicationTest {
 	}
 	
 	def RenderingContext getRenderingContextAt(int x, int y) {
-		return terminal.getStylesGrid().get(y, x).get(0) as RenderingContext
+		return terminal.getBuffer().getStylesGrid().get(y, x).get(0) as RenderingContext
 	}
 	
 }
