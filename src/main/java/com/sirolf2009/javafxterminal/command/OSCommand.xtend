@@ -4,7 +4,7 @@ import com.sirolf2009.javafxterminal.TerminalCanvas
 import java.util.List
 import org.eclipse.xtend.lib.annotations.Data
 
-@Data class OSCommand implements Command {
+@Data class OSCommand extends AbstractCommand {
 	
 	val List<String> params
 	

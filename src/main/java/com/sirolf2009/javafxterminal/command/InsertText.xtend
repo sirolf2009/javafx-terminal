@@ -5,7 +5,7 @@ import com.sirolf2009.javafxterminal.TerminalCanvas
 import java.util.List
 import org.eclipse.xtend.lib.annotations.Data
 
-@Data class InsertText implements Command {
+@Data class InsertText extends AbstractCommand {
 
 	val String characters
 	val List<CharModifier> styles
