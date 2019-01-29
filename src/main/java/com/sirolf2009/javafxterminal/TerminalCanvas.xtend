@@ -30,6 +30,8 @@ import org.eclipse.xtend.lib.annotations.Accessors
 	val float charHeight
 	val ObjectProperty<Point> anchor
 	val ObjectProperty<Point> caret
+	var long lastTime
+	var double fps
 
 	new(ITheme theme) {
 		super(400, 400)
@@ -53,6 +55,9 @@ import org.eclipse.xtend.lib.annotations.Accessors
 		val timeline = new Timeline(60)
 		timeline.setCycleCount(Timeline.INDEFINITE)
 		val kf = new KeyFrame(Duration.millis(16), [ evt |
+			val newFPS = 1000000000.0 / (System.nanoTime() - lastTime)
+			fps += (newFPS - fps) / 2 //slightly smoother
+			lastTime = System.nanoTime()
 			draw()
 		])
 		timeline.getKeyFrames().add(kf)
@@ -75,6 +80,7 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			]
 		}
 		drawCursor()
+		drawFPS()
 		restore()
 	}
 
@@ -89,6 +95,15 @@ import org.eclipse.xtend.lib.annotations.Accessors
 			]
 			fillText(char.toString(), x.columnToScreen(), yPixel)
 		]
+		restore()
+	}
+	
+	def void drawFPS() {
+		extension val g = getGraphicsContext2D()
+		save()
+		setFill(Color.WHITE)
+		val text = '''FPS: «String.valueOf(fps.intValue())»'''
+		fillText(text, getWidth() - (text.length() * charWidth), 0)
 		restore()
 	}
 	
