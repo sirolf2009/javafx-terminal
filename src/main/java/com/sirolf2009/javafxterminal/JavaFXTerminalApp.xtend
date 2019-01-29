@@ -24,13 +24,17 @@ import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import org.controlsfx.control.PopOver
+import java.io.StringReader
 
 class JavaFXTerminalApp extends Application {
 
 	override start(Stage primaryStage) throws Exception {
+		val terminalView = new TerminalView(new StringReader("\u001B[31mHello World\u001B[0m"), new ThemeSolarizedDark()) => [
+			VBox.setVgrow(it, Priority.ALWAYS)
+			height = 200
+		]
 		val terminal = new Terminal(#["/usr/bin/fish"], new ThemeSolarizedDark()) => [
-			drawTimeline()
-			HBox.setHgrow(it, Priority.ALWAYS)
+			VBox.setVgrow(it, Priority.ALWAYS)
 		]
 
 		val newStage = new Stage()
@@ -48,7 +52,9 @@ class JavaFXTerminalApp extends Application {
 			new Tab("Grid", new ScrollPane(grid))
 		), 1024, 768))
 		newStage.show()
-		val parent = new AnchorPane(terminal)
+		val parent = new AnchorPane(new VBox(terminalView, terminal) => [
+			terminalView.widthProperty().bind(widthProperty())
+		])
 		terminal.widthProperty().bind(parent.widthProperty())
 		terminal.heightProperty().bind(parent.heightProperty())
 		val scene = new Scene(parent, 1024, 768)

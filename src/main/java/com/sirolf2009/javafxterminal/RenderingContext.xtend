@@ -8,8 +8,9 @@ import javafx.scene.text.Font
 import javafx.scene.text.FontPosture
 import javafx.scene.text.FontWeight
 import org.eclipse.xtend.lib.annotations.EqualsHashCode
+import org.eclipse.xtend.lib.annotations.Accessors
 
-@EqualsHashCode class RenderingContext implements CharModifier {
+@EqualsHashCode @Accessors class RenderingContext implements CharModifier {
 
 	val ITheme theme
 	var FontWeight fontWeight

@@ -86,6 +86,17 @@ import com.sirolf2009.javafxterminal.command.CursorPosition
 //			println('''read char «it» «CharacterNames.getCharacterName(it)»: «it as char»''')
 //		]
 
+		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).filter[size() > 0].aggregate()
+		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
+			try {
+				execute(this)
+			} catch(Exception e) {
+				log.error("Failed to execute " + it, e)
+			}
+		]
+
+		drawTimeline()
+
 		new Thread [
 			val buffer = new StringBuffer()
 			var char = 0
@@ -128,7 +139,7 @@ import com.sirolf2009.javafxterminal.command.CursorPosition
 					} else if(char == HORIZONTAL_TAB) {
 						commands.onNext(new InsertChar(char as char, getStyles()))
 					} else {
-						System.err.println('''I don't know what to do with char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
+						//System.err.println('''I don't know what to do with char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
 					}
 				} catch(Exception e) {
 					System.err.println('''Failed to add char «char» «CharacterNames.getCharacterName(char)»: «char as char»''')
@@ -137,17 +148,6 @@ import com.sirolf2009.javafxterminal.command.CursorPosition
 			}
 			reader.close()
 		].start()
-
-		aggregatedCommands = commands.observeOn(Schedulers.computation).buffer(16, TimeUnit.MILLISECONDS).filter[size() > 0].aggregate()
-		aggregatedCommands.observeOn(JavaFxScheduler.platform()).subscribe [
-			try {
-				execute(this)
-			} catch(Exception e) {
-				log.error("Failed to execute " + it, e)
-			}
-		]
-
-		drawTimeline()
 	}
 
 	// https://github.com/JetBrains/jediterm/blob/master/terminal/src/com/jediterm/terminal/emulator/JediEmulator.java
